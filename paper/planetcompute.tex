@@ -628,8 +628,9 @@ results; only then does the website choose $K=20$ packs at random, and the devic
 with each result and its Merkle path, which the website recomputes. A device that computed a fraction $h$ of its
 packs honestly passes with probability $h^{K}$: $12\%$ at $h=0.9$, $10^{-6}$ at $h=0.5$. A pass credits every
 pack; a fail credits nothing and is a strike, and three strikes in a row hold the device for an hour. GPU leases commit a Merkle \emph{sum} tree over dispatches of up to 8{,}192 groups, audited on 16 groups;
-they are tested against the CPU code, not yet on real WebGPU hardware. For WorkPacks, every build that carries an identity is credited by these audits only
-(Section~\ref{sec:oldprograms}); grid chat answers (Section~\ref{sec:client}) are credited per token, with a
+they are tested against the CPU code, not yet on real WebGPU hardware. Every build reports its commit, and a website setting can flag or stop paying builds older than a minimum,
+never touching sign-in, balances or local use; a modified copy that hides its build is still credited only
+through these audits. Grid chat answers (Section~\ref{sec:client}) are credited per token, with a
 quarter of them double-checked.
 
 \section{Competitive Dispatch}\label{sec:race}
@@ -877,7 +878,7 @@ Free file storage                  & Only files the account's program made (SHA-
 Lazy copier (submits another's answer) & Results never shown to volunteers, roots bound to each device's socket, a random Merkle-leaf challenge, fixed credit per pack (Section~\ref{sec:race}) \\
 Cheating volunteer, fast fakes     & Built: commit-then-random-audit, Freivalds checks, repeated prompts, strikes and bans. Simulated: quorum, spare replicas $n>q$, network-distinct quorum, retroactive invalidation and clawback (Sections~\ref{sec:verify}, \ref{sec:race}) \\
 Sybil devices; one computation, many submissions & Account-bound device keys, rate limits on new accounts; per-account replica exclusion (specified) (a group that computes once returns a correct result but defeats independence) \\
-Old or modified program keeps earning & Credit and transfer checks only on the server; builds with an identity credited by audits only; a minimum build for earning (Section~\ref{sec:oldprograms}) \\
+Old or modified program keeps earning & Credit and transfer checks only on the server; builds with an identity credited by audits only; a minimum build for earning (Section~\ref{sec:verify}) \\
 Data exposure to volunteers        & Privacy tiers: \emph{Public} (any host; the data is visible, so only non-confidential jobs), \emph{Protected} (desktop only; rotated fragments in memory, not encryption during processing), \emph{Confidential} (attested server TEEs or FHE; at higher cost) \\
 Perceived cryptojacking; antivirus & Explicit opt-in, visible indicator, one-click pause, open-source client, no silent auto-start, conservative default caps; code signing and vendor allow-list submissions planned \\
 \bottomrule
@@ -1005,16 +1006,6 @@ Computers that answered & the same 5 & the same 5 \\
 \bottomrule
 \end{tabularx}
 \end{table}
-
-\subsection{Programs That Are Never Updated}\label{sec:oldprograms}
-
-Many people never update a program. Credit is decided on the website, so an old copy cannot pay out wrongly;
-what was missing was knowing which build is which. Each build now sends its commit and commit time in the User-Agent and every status report. Once a day the
-program checks for a newer build and shows a notice that never blocks local use. Two website settings name the
-oldest build that still earns and a mode: in \emph{warn} mode older programs are flagged and their owners emailed
-once; in \emph{enforce} mode they earn nothing, while sign-in, balances and local use are never affected. For WorkPacks, every
-build with an identity is credited only through commit-then-random-audit, and a modified copy that hides its
-identity looks like an old build, so a modified program has no third path.
 
 \subsection{Tests}\label{sec:tests}
 
