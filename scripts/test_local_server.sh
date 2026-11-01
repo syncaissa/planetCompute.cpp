@@ -65,7 +65,9 @@ check "native contributor present"                "curl -sf $B/local/contribute 
 check "start refused without I agree"             "[ \"\$(code -X POST -H 'content-type: application/json' -d '{\"run\":true}' $B/local/contribute)\" = 400 ]"
 curl -sf -X POST -H 'content-type: application/json' -d '{"agree":true,"cores":1,"cap":50,"run":true}' $B/local/contribute > /dev/null
 sleep 5
-check "computes after I agree"                    "curl -sf $B/local/contribute | grep -q '\"running\":true' && ! curl -sf $B/local/contribute | grep -q '\"packs\":0,'"
+# test 106 (user 2026-11-01): sharing runs only while signed in. This test is not signed in, so after I agree it is
+# switched on but computes nothing; computing once signed in is the Rust test contribute::sharing_only_while_signed_in.
+check "after I agree, signed out: switched on, computes nothing" "curl -sf $B/local/contribute | grep -q '\"running\":true' && curl -sf $B/local/contribute | grep -q '\"signed_in\":false' && curl -sf $B/local/contribute | grep -q '\"packs\":0,'"
 curl -s $B/local/contribute; echo
 curl -sf -X POST -H 'content-type: application/json' -d '{"run":false,"agree":false}' $B/local/contribute > /dev/null
 

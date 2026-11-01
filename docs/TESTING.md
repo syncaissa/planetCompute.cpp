@@ -2272,6 +2272,13 @@ computed; signed in it computes; signed out it stops and no more packs come; sig
 Result (2026-11-01): test_signout_halts 21/21 (on the code before this change 13 fail); test_signin_reset 8/8,
 test_pool_madeby 11/11, test_police_slow 4/4, test_otp_hold 10/10, test_broadcasts 19/19, test_versions 19/19;
 Rust (RunPod CPU pod, server build): 29/29 with the new test; pod deleted.
+First release build (run 41339868197) failed on all 5: scripts/test_local_server.sh still checked "computes after I
+agree" without signing in, which is what this change stops. That check is now "after I agree, signed out: switched
+on, computes nothing" (computing once signed in is the Rust test). The Rust test now builds the engine without saving
+its settings (it had left "I agree" on in the pod's settings, which made "start refused without I agree" fail there).
+A test site of our own (PLANETCOMPUTE_SITE, test_sherpa_e2e.sh) has no sign-in, so the sign-in rule applies to the
+real site only, as sherpa.rs already did. RunPod again: Rust 29/29, no settings file written; test_local_server.sh all
+pass except "image engine is in this build" (the image engine is added by CI, not on the pod); pod deleted.
 
 ## Our runs
 

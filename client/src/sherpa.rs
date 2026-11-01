@@ -60,7 +60,7 @@ const DEVICE_CACHE: usize = 256 << 20;
 fn site() -> String {
     std::env::var("PLANETCOMPUTE_SITE").ok().filter(|s| s.starts_with("http://") || s.starts_with("https://")).unwrap_or_else(|| crate::api::SITE.into())
 }
-fn real_site() -> bool {
+pub(crate) fn real_site() -> bool {
     site() == crate::api::SITE
 }
 

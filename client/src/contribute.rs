@@ -152,6 +152,13 @@ fn random_hex(len: usize) -> String {
 impl Engine {
     /// Saved settings, then the command line: --contribute (agree and start), --cores N, --cap P.
     pub fn new(args: &[String]) -> Arc<Engine> {
+        let e = Self::build(args);
+        e.save();
+        e
+    }
+
+    /// The engine without saving its settings (the tests use this: they must not change this computer's settings).
+    fn build(args: &[String]) -> Arc<Engine> {
         let mut s = settings_file()
             .and_then(|f| std::fs::read_to_string(f).ok())
             .and_then(|t| serde_json::from_str::<Settings>(&t).ok())
@@ -188,7 +195,6 @@ impl Engine {
             jobs: AtomicU32::new(0),
             signed_in: AtomicBool::new(false),
         });
-        e.save();
         e
     }
 
@@ -648,7 +654,7 @@ mod tests {
     #[test]
     fn sharing_only_while_signed_in() {
         let args: Vec<String> = ["--contribute", "--cores", "1"].iter().map(|x| x.to_string()).collect();
-        let e = Engine::new(&args);
+        let e = Engine::build(&args); // not new(): that would save "I agree" into this computer's settings
         e.apply();
         std::thread::sleep(Duration::from_millis(800));
         assert!(!e.running() && e.packs.load(SeqCst) == 0, "signed out: nothing is computed");

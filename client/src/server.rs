@@ -199,7 +199,7 @@ pub async fn serve(listener: std::net::TcpListener, port: u16, engine: Option<Ar
     }
     let mut app = Router::new();
     if let Some(e) = engine {
-        e.set_signed_in(st.session.lock().unwrap().is_some());
+        e.set_signed_in(st.session.lock().unwrap().is_some() || !crate::sherpa::real_site());
         tokio::spawn(crate::contribute::run(st.clone(), e));
     }
     // / is this program's own page (the site's console is on the site port, inside the window)
@@ -1268,7 +1268,8 @@ pub(crate) fn set_session(st: &Local, token: Option<String>) {
         if was && token.is_none() && e.settings.lock().unwrap().running {
             println!("Signed out: sharing stopped. It starts again when this program is signed in.");
         }
-        e.set_signed_in(token.is_some());
+        // a test site of our own (PLANETCOMPUTE_SITE, scripts/test_sherpa_e2e.sh) has no sign-in: as sherpa.rs, allowed there
+        e.set_signed_in(token.is_some() || !crate::sherpa::real_site());
     }
     let Some(f) = session_file() else { return };
     match token {
