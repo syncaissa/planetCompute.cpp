@@ -396,7 +396,7 @@ const OTP_FAIL_LOCK = 15;   // per address per UTC day
 // A daily ceiling per address (user 2026-11-01): more than OTP_DAY_MAX code requests for one address within 24 hours
 // (every purpose; refused ones count too) put the address on hold for OTP_HOLD_S: no code is made, and ONE email tells
 // the address when the hold started. Requests during the hold are refused without another email.
-const OTP_DAY_MAX = 25, OTP_HOLD_S = 20 * 3600;
+const OTP_DAY_MAX = 10, OTP_HOLD_S = 24 * 3600;   // user 2026-11-01: hold for 24 hours after 10 requests
 const gmtStamp = (t) => new Date(t * 1000).toISOString().replace(/\.\d+Z$/, "").replace(/-/g, "").replace("T", ":").replace(/:(\d\d):(\d\d)$/, "$1$2");
 async function otpDayCheck(env, email, t) {
   const pk = `OTPREQ#${email}`, rq = await getItem(env, pk, "OTPREQ");

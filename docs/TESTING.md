@@ -2164,24 +2164,24 @@ Steps: `node scripts/test_signin_turnstile.mjs website/worker.js` (fake DynamoDB
 Result (2026-11-01): 10/10. Live (site e9590176): a scripted browser request for an existing address got 428
 need_turnstile and no code was sent. Regression: test_auth_codes 6/7 (check 7 as before this change).
 
-## 102. A daily ceiling on code requests per address: a 20-hour hold (2026-11-01)
+## 102. A daily ceiling on code requests per address: a 24-hour hold after 10 requests (2026-11-01)
 
-More than 25 requests for a code for one address within 24 hours (sign-in, adding an address, wallet or admin
-confirmations; refused requests count too) put the address on hold for 20 hours (`otpDayCheck` in
-`website/worker.js`, OTP_DAY_MAX 25, OTP_HOLD_S 20 h). During the hold no code is made and the site answers "This
+More than 10 requests for a code for one address within 24 hours (sign-in, adding an address, wallet or admin
+confirmations; refused requests count too) put the address on hold for 24 hours (`otpDayCheck` in
+`website/worker.js`, OTP_DAY_MAX 10, OTP_HOLD_S 24 h; first set to 25 and 20 h, changed the same day). During the hold no code is made and the site answers "This
 account is on hold until YYYYMMDD:HHMMSS Greenwich time ... Please try later". ONE email goes to the address when the
-hold starts: "Your account is on hold for 20 hours starting YYYYMMDD:HHMMSS Greenwich time; please try later.", so the
+hold starts: "Your account is on hold for 24 hours starting YYYYMMDD:HHMMSS Greenwich time; please try later.", so the
 hold cannot itself be used to fill an inbox.
 Steps: `node scripts/test_otp_hold.mjs website/worker.js` (fake DynamoDB, rate limiter and email; a shifted clock).
-Result (2026-11-01): 10/10 (requests 1-25 not held; the 26th starts the hold; 27-30 refused; exactly one hold email
-with the exact wording and the start time; no code during the hold; still held after 19 h; codes again after 20 h;
+Result (2026-11-01): 10/10 (requests 1-10 not held; the 11th starts the hold; 12-15 refused; exactly one hold email
+with the exact wording and the start time; no code during the hold; still held after 23 h; codes again after 24 h;
 another address not affected). Regression: test_signin_turnstile 10/10, test_auth_codes 6/7 (check 7 as before).
 
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
-| 2026-11-01 15:45 | 102 25 code requests a day per address, then a 20-hour hold with one email | site fcbb133b | 10/10 |
+| 2026-11-01 15:55 | 102 10 code requests a day per address, then a 24-hour hold with one email | site (this commit) | 10/10 |
 | 2026-11-01 15:35 | 101 Turnstile on sign-in code requests; code email names who asked | site e9590176 | 10/10; live: browser request without the check refused, no code sent |
 | 2026-11-01 15:15 | 100 batched monthly balance seal | site (this commit) | 13/13 at 25,000 accounts; 13/13 at 200,000 (20 batches, ~1.2 s each) |
 | 2026-11-01 14:00 | 99 picture survives a newer copy replacing the program | program (this commit), stand-in engine | old 7/8 rounds (one picture lost), fixed 8/8; Rust 28/28 |
