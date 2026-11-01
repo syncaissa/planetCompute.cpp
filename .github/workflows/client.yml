@@ -89,8 +89,10 @@ jobs:
         with: { toolchain: stable }
       # macOS: a cache made on the retired macos-14 image carried llama.cpp's CMake setup (OpenSSL paths) that do not
       # exist on macos-15 (2026-10-31: cpp-httplib "openssl/err.h not found"): its own key, so it builds fresh once
+      # Windows: the cache of 2026-11-01 03:28 held a half-kept llama.cpp Vulkan build folder (CMake: "Not a file:
+      # vulkan-shaders-gen ... cmake_install.cmake"): its own key, so it builds fresh once
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2 (pinned, security review P11)
-        with: { workspaces: client, key: "${{ matrix.key }}${{ matrix.os == 'macos-15' && '-macos15' || '' }}" }
+        with: { workspaces: client, key: "${{ matrix.key }}${{ matrix.os == 'macos-15' && '-macos15' || '' }}${{ startsWith(matrix.os, 'windows') && '-win2' || '' }}" }
       - name: Linux libraries (WebKitGTK for the window; clang for llama.cpp's bindings)
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
         run: |

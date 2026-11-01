@@ -2099,6 +2099,11 @@ missing path argument): not caused by this change, still to be looked at. Window
 compiled only by CI. Not changed (accepted or later): the "made here" registry accepts any registered hash; CSP still
 allows inline scripts; the B2 key can write the releases bucket; the model list is not signed offline; no seccomp on
 ARM Linux; the macOS sandbox profile allows by default.
+First release build of these fixes (run 41298470907) failed: `scripts/test_local_server.sh` read the program's secret
+from the printed link, which a log no longer gets; the program now creates `local_token` before naming its path and
+the test reads it from there. Re-test (RunPod CPU pod, 2026-11-01, build without the picture engine): every
+local-server check passed except "image engine is in this build" (expected: CI adds that engine); `local_token` is
+mode 600; Rust 28/28. The Windows build had restored a stale llama.cpp Vulkan build folder from the cache: new cache key.
 
 ## Our runs
 

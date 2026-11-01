@@ -27,7 +27,12 @@ mstate() { curl -sf $B/local/models | "$PY" -c "import json,sys; d=json.load(sys
 check "the engines run in the operating system's sandbox (--sandbox-check)" "[ $sandbox_rc = 0 ] && grep -q 'ALL PASS' sandbox.log"
 "$BIN" --headless > headless.log 2>&1 &
 # the program's secret (security review E1): printed in the sign-in link; every call below sends it as the program's key
-for i in $(seq 30); do TOK=$(sed -nE 's/.*\/local\/\?t=([0-9a-f]+).*/\1/p' headless.log | head -1); [ -n "$TOK" ] && break; sleep 1; done
+# the link is printed only on a terminal (security review P4); in a log the program names the file that holds it
+for i in $(seq 30); do
+  TOK=$(sed -nE 's/.*\/local\/\?t=([0-9a-f]+).*/\1/p' headless.log | head -1)
+  [ -z "$TOK" ] && TF=$(sed -nE 's/.*the secret is in (.*) \(readable only by this user\).*/\1/p' headless.log | head -1) && [ -n "$TF" ] && { command -v cygpath >/dev/null && TF=$(cygpath -u "$TF") || true; } && [ -f "$TF" ] && TOK=$(tr -d '\r\n' < "$TF")
+  [ -n "$TOK" ] && break; sleep 1
+done
 curl() { command curl -H "Authorization: Bearer ${TOK:-none}" "$@"; }
 for i in $(seq 30); do curl -sf $B/local/info > /dev/null && break; sleep 1; done
 cat headless.log
@@ -37,7 +42,7 @@ check "device page served"                        "curl -sf $B/local/ | grep -q 
 check "--headless: / goes to the device page"     "[ \"\$(code $B/)\" = 307 ]"
 check "without the program's key: refused"         "[ \"\$(command curl -s -o /dev/null -w '%{http_code}' $B/local/info)\" = 401 ] && [ \"\$(command curl -s -o /dev/null -w '%{http_code}' $B/v1/models)\" = 401 ] && [ \"\$(command curl -s -o /dev/null -w '%{http_code}' $S/contribute)\" = 401 ]"
 check "a wrong key is refused"                    "[ \"\$(command curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer 00' $B/local/info)\" = 401 ]"
-check "the printed link sets the program's cookie" "command curl -s -D - -o /dev/null $B/local/?t=$TOK | grep -qi 'set-cookie: pc_local=$TOK'"
+check "the program's link sets the program's cookie" "command curl -s -D - -o /dev/null $B/local/?t=$TOK | grep -qi 'set-cookie: pc_local=$TOK'"
 check "site pages are on their own port, not the program's" "[ \"\$(code $B/contribute)\" = 404 ] && [ \"$S\" != \"$B\" ]"
 check "site console passed through (on its own it opens inside the program's page)" "for i in 1 2 3; do curl -sf $S/contribute | grep -q '/local/#site=' && break; sleep 3; done"
 check "site API passed through (credit rule)"     "curl -sf $B/api/credit-rate | grep -q current"

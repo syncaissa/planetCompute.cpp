@@ -10,6 +10,7 @@ pub fn run(listener: std::net::TcpListener, port: u16, args: &[String]) -> i32 {
         println!("Sign in and contribute at http://localhost:{port}/local/?t={}", super::server::local_token());
         println!("  (the ?t= part is this program's secret: keep the link to yourself)");
     } else {
+        let _ = super::server::local_token(); // make the file now, so the path printed below exists
         let f = super::server::config_file("local_token").map(|p| p.display().to_string()).unwrap_or_else(|| "local_token in its config folder".into());
         println!("Sign in and contribute at http://localhost:{port}/local/?t=<secret>: the secret is in {f} (readable only by this user)");
     }
