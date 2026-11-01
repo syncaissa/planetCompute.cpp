@@ -1,0 +1,38 @@
+[
+ {
+  "path": "/home/ubuntu/environment/planetCompute/planetCompute-CPP/.ops/wintest/out/win-gpu-sd15-lighthouse.png",
+  "name": "win-gpu-sd15-lighthouse.png",
+  "title": "a lighthouse on a rocky coast at sunset, dramatic sky, oil painting",
+  "note": "WINDOWS: planetCompute.exe on Windows Server 2022 (AWS g4dn.xlarge), Stable Diffusion 1.5 (8-bit), 512 x 512, 20 steps, on the GPU (NVIDIA Tesla T4 16 GB, Vulkan) in 90 s (first job of a model includes loading it). 2026-10-22."
+ },
+ {
+  "path": "/home/ubuntu/environment/planetCompute/planetCompute-CPP/.ops/wintest/out/win-gpu-sd15-apple.png",
+  "name": "win-gpu-sd15-apple.png",
+  "title": "a red apple on a wooden table, soft window light, photograph",
+  "note": "WINDOWS: planetCompute.exe on Windows Server 2022 (AWS g4dn.xlarge), Stable Diffusion 1.5 (8-bit), 512 x 512, 20 steps, on the GPU (NVIDIA Tesla T4 16 GB, Vulkan) in 16 s (first job of a model includes loading it). 2026-10-22."
+ },
+ {
+  "path": "/home/ubuntu/environment/planetCompute/planetCompute-CPP/.ops/wintest/out/win-gpu-flux-cat.png",
+  "name": "win-gpu-flux-cat.png",
+  "title": "a fluffy orange cat sleeping on a sunny windowsill, cozy, photograph",
+  "note": "WINDOWS: planetCompute.exe on Windows Server 2022 (AWS g4dn.xlarge), FLUX.1 schnell (4-bit), 1024 x 1024, 4 steps, on the GPU (NVIDIA Tesla T4 16 GB, Vulkan) in 111 s (first job of a model includes loading it). 2026-10-22."
+ },
+ {
+  "path": "/home/ubuntu/environment/planetCompute/planetCompute-CPP/.ops/wintest/out/win-gpu-flux-sign.png",
+  "name": "win-gpu-flux-sign.png",
+  "title": "a wooden sign in a green forest that says PlanetCompute, morning light, photograph",
+  "note": "WINDOWS: planetCompute.exe on Windows Server 2022 (AWS g4dn.xlarge), FLUX.1 schnell (4-bit), 1024 x 768, 4 steps, on the GPU (NVIDIA Tesla T4 16 GB, Vulkan) in 37 s (first job of a model includes loading it). 2026-10-22."
+ },
+ {
+  "path": "/home/ubuntu/environment/planetCompute/planetCompute-CPP/.ops/wintest/out/win-gpu-wan-boat.webm",
+  "name": "win-gpu-wan-boat.webm",
+  "title": "a small sailing boat on a calm lake at sunrise, mountains in the background, gentle waves",
+  "note": "WINDOWS: planetCompute.exe on Windows Server 2022 (AWS g4dn.xlarge), Wan 2.1 text to video 1.3B (8-bit), 832 x 480, 33 frames, 20 steps, on the GPU (NVIDIA Tesla T4 16 GB, Vulkan) in 492 s (first job of a model includes loading it). 2026-10-22."
+ },
+ {
+  "path": "/home/ubuntu/environment/planetCompute/planetCompute-CPP/.ops/wintest/out/win-cpu-sd15-apple-256.png",
+  "name": "win-cpu-sd15-apple-256.png",
+  "title": "a red apple on a wooden table, soft window light, photograph",
+  "note": "WINDOWS: planetCompute.exe on Windows Server 2022 (AWS g4dn.xlarge), Stable Diffusion 1.5 (8-bit), 256 x 256, 4 steps, on the CPU (4 vCPU, the CPU .exe) in 63 s (first job of a model includes loading it). 2026-10-22."
+ }
+]

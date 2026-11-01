@@ -1,0 +1,105 @@
+[
+    {
+        "ran_on":  "GPU",
+        "seconds":  89.8,
+        "gpu_peak_mem_mb":  3928,
+        "req":  {
+                    "width":  512,
+                    "prompt":  "a lighthouse on a rocky coast at sunset, dramatic sky, oil painting",
+                    "negative":  "blurry, low quality, deformed, text, watermark",
+                    "steps":  20,
+                    "seed":  1001,
+                    "height":  512
+                },
+        "retried":  [
+
+                    ],
+        "error":  "",
+        "state":  "done",
+        "name":  "win-gpu-sd15-lighthouse.png",
+        "model":  "sd15-q8",
+        "gpu_peak_util":  100
+    },
+    {
+        "ran_on":  "GPU",
+        "seconds":  15.9,
+        "gpu_peak_mem_mb":  2403,
+        "req":  {
+                    "width":  512,
+                    "prompt":  "a red apple on a wooden table, soft window light, photograph",
+                    "negative":  "blurry, low quality, deformed, text, watermark",
+                    "steps":  20,
+                    "seed":  1002,
+                    "height":  512
+                },
+        "retried":  [
+
+                    ],
+        "error":  "",
+        "state":  "done",
+        "name":  "win-gpu-sd15-apple.png",
+        "model":  "sd15-q8",
+        "gpu_peak_util":  100
+    },
+    {
+        "ran_on":  "GPU",
+        "seconds":  111.4,
+        "gpu_peak_mem_mb":  13962,
+        "req":  {
+                    "steps":  4,
+                    "width":  1024,
+                    "prompt":  "a fluffy orange cat sleeping on a sunny windowsill, cozy, photograph",
+                    "height":  1024,
+                    "seed":  13
+                },
+        "retried":  [
+
+                    ],
+        "error":  "",
+        "state":  "done",
+        "name":  "win-gpu-flux-cat.png",
+        "model":  "flux1-schnell-q4",
+        "gpu_peak_util":  100
+    },
+    {
+        "ran_on":  "GPU",
+        "seconds":  36.8,
+        "gpu_peak_mem_mb":  12155,
+        "req":  {
+                    "steps":  4,
+                    "width":  1024,
+                    "prompt":  "a wooden sign in a green forest that says PlanetCompute, morning light, photograph",
+                    "height":  768,
+                    "seed":  14
+                },
+        "retried":  [
+
+                    ],
+        "error":  "",
+        "state":  "done",
+        "name":  "win-gpu-flux-sign.png",
+        "model":  "flux1-schnell-q4",
+        "gpu_peak_util":  100
+    },
+    {
+        "ran_on":  "GPU",
+        "seconds":  492.5,
+        "gpu_peak_mem_mb":  9590,
+        "req":  {
+                    "width":  832,
+                    "prompt":  "a small sailing boat on a calm lake at sunrise, mountains in the background, gentle waves",
+                    "frames":  33,
+                    "steps":  20,
+                    "seed":  7,
+                    "height":  480
+                },
+        "retried":  [
+
+                    ],
+        "error":  "",
+        "state":  "done",
+        "name":  "win-gpu-wan-boat.webm",
+        "model":  "wan21-t2v-1.3b-q8",
+        "gpu_peak_util":  100
+    }
+]

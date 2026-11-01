@@ -1,0 +1,188 @@
+[
+ {
+  "name": "flux-lighthouse.png",
+  "model": "flux1-schnell-q4",
+  "state": "done",
+  "seconds": 38.7,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 100,
+  "gpu_peak_mem_mb": 14146,
+  "req": {
+   "prompt": "a lighthouse on a rocky coast at sunset, dramatic sky, oil painting",
+   "width": 1024,
+   "height": 1024,
+   "steps": 4,
+   "seed": 11
+  }
+ },
+ {
+  "name": "flux-city.png",
+  "model": "flux1-schnell-q4",
+  "state": "done",
+  "seconds": 9.4,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 100,
+  "gpu_peak_mem_mb": 12234,
+  "req": {
+   "prompt": "a futuristic city at night with neon lights and rain, cinematic",
+   "width": 1024,
+   "height": 768,
+   "steps": 4,
+   "seed": 12
+  }
+ },
+ {
+  "name": "flux-cat.png",
+  "model": "flux1-schnell-q4",
+  "state": "done",
+  "seconds": 12.0,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 100,
+  "gpu_peak_mem_mb": 14146,
+  "req": {
+   "prompt": "a fluffy orange cat sleeping on a sunny windowsill, cozy, photograph",
+   "width": 1024,
+   "height": 1024,
+   "steps": 4,
+   "seed": 13
+  }
+ },
+ {
+  "name": "flux-sign.png",
+  "model": "flux1-schnell-q4",
+  "state": "done",
+  "seconds": 9.4,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 100,
+  "gpu_peak_mem_mb": 12234,
+  "req": {
+   "prompt": "a wooden sign in a green forest that says PlanetCompute, morning light, photograph",
+   "width": 1024,
+   "height": 768,
+   "steps": 4,
+   "seed": 14
+  }
+ },
+ {
+  "name": "sd15-lighthouse.png",
+  "model": "sd15-q8",
+  "state": "done",
+  "seconds": 21.2,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 68,
+  "gpu_peak_mem_mb": 3992,
+  "req": {
+   "prompt": "a lighthouse on a rocky coast at sunset, dramatic sky, oil painting",
+   "negative": "blurry, low quality, deformed, text, watermark",
+   "width": 512,
+   "height": 512,
+   "steps": 20,
+   "seed": 1001
+  }
+ },
+ {
+  "name": "sd15-apple.png",
+  "model": "sd15-q8",
+  "state": "done",
+  "seconds": 4.4,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 78,
+  "gpu_peak_mem_mb": 3992,
+  "req": {
+   "prompt": "a red apple on a wooden table, soft window light, photograph",
+   "negative": "blurry, low quality, deformed, text, watermark",
+   "width": 512,
+   "height": 512,
+   "steps": 20,
+   "seed": 1002
+  }
+ },
+ {
+  "name": "sd15-city.png",
+  "model": "sd15-q8",
+  "state": "done",
+  "seconds": 4.4,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 79,
+  "gpu_peak_mem_mb": 3992,
+  "req": {
+   "prompt": "a futuristic city at night with neon lights and rain, digital art",
+   "negative": "blurry, low quality, deformed, text, watermark",
+   "width": 512,
+   "height": 512,
+   "steps": 20,
+   "seed": 1003
+  }
+ },
+ {
+  "name": "sd15-cat.png",
+  "model": "sd15-q8",
+  "state": "done",
+  "seconds": 4.5,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 68,
+  "gpu_peak_mem_mb": 3969,
+  "req": {
+   "prompt": "a fluffy orange cat sleeping on a windowsill, cozy, photograph",
+   "negative": "blurry, low quality, deformed, text, watermark",
+   "width": 512,
+   "height": 512,
+   "steps": 20,
+   "seed": 1004
+  }
+ },
+ {
+  "name": "wan-boat.webm",
+  "model": "wan21-t2v-1.3b-q8",
+  "state": "done",
+  "seconds": 87.8,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 100,
+  "gpu_peak_mem_mb": 10056,
+  "req": {
+   "prompt": "a small sailing boat on a calm lake at sunrise, mountains in the background, gentle waves",
+   "width": 832,
+   "height": 480,
+   "frames": 33,
+   "steps": 20,
+   "seed": 7
+  }
+ },
+ {
+  "name": "wan-fox.webm",
+  "model": "wan21-t2v-1.3b-q8",
+  "state": "done",
+  "seconds": 77.2,
+  "ran_on": "GPU",
+  "retried": [],
+  "error": "",
+  "gpu_peak_util": 100,
+  "gpu_peak_mem_mb": 9850,
+  "req": {
+   "prompt": "a red fox running through fresh snow in a pine forest, slow motion",
+   "width": 832,
+   "height": 480,
+   "frames": 33,
+   "steps": 20,
+   "seed": 8
+  }
+ }
+]

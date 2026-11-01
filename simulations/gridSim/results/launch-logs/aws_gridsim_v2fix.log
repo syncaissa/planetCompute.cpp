@@ -1,0 +1,21 @@
+17:18:34 key pair pc-gridsim-dff190, security group sg-<group> (SSH from <ip> only)
+17:18:38 instance i-<instance> (r7a.xlarge, Ubuntu 24.04), powers itself off and is terminated after 120 min
+17:18:56 ssh ubuntu@<ip>: 31383 MB, heap 28383 MB
+v22.11.0
+17:18:58 started cost-v2fix-1M
+17:21:00 progress t=300s  online 949187  jobs 19289  events 12.6M  queued 1.73M  heap 6.08 GB  wall 60s
+17:23:02 progress t=600s  online 885991  jobs 27494  events 24.8M  queued 1.81M  heap 9.47 GB  wall 148s
+17:25:03 progress t=1200s  online 885676  jobs 30454  events 49.5M  queued 1.86M  heap 8.52 GB  wall 348s
+17:27:05 progress t=1500s  online 901164  jobs 30059  events 61.1M  queued 1.84M  heap 5.75 GB  wall 453s
+17:29:07 progress t=1800s  online 916256  jobs 29166  events 72.2M  queued 1.84M  heap 12.45 GB  wall 553s
+17:31:08 progress t=2100s  online 927452  jobs 28256  events 82.8M  queued 1.82M  heap 8.51 GB  wall 656s
+17:33:10 progress t=2400s  online 935831  jobs 27099  events 93.1M  queued 1.80M  heap 4.80 GB  wall 759s
+17:35:12 progress t=3000s  online 948504  jobs 26091  events 112.9M  queued 1.80M  heap 8.05 GB  wall 962s
+17:37:14 progress t=3300s  online 952752  jobs 25673  events 122.5M  queued 1.79M  heap 14.36 GB  wall 1060s
+17:39:16 saved /home/ubuntu/environment/planetCompute/gridSim/results/cost-v2fix-1M.json + B2
+17:39:16 cleaning up (always)
+17:39:19 terminating i-<instance>
+17:39:50 instances terminated
+17:39:53 security group deleted sg-<group>
+17:39:56 key pair deleted pc-gridsim-dff190
+17:40:00 CLEAN: nothing of planetcompute-gridsim left on AWS

@@ -1,0 +1,55 @@
+03:45:46 program planetCompute-0.1.0-windows-x86_64-vulkan.exe 144098816
+03:45:47 program planetCompute-0.1.0-windows-x86_64.exe 54641152
+03:45:53 programs in pc-wintest-ceb32435
+03:46:21 INSTANCE i-<instance> g4dn.xlarge ami-057fee592d97c84cb
+03:47:25 online
+03:47:26 ssm pc driver cea60db1-b26b-4bbc-bad7-b746357048d5
+driver downloaded: 748151912
+driver setup exit code: 0
+ A system shutdown has already been scheduled.(1190)
+
+03:53:52 back after reboot
+03:53:53 ssm pc tests 1f979d73-15e8-4539-983e-152998080ac9
+nvidia-smi: C:\Windows\System32\nvidia-smi.exe
+Tesla T4, 15360 MiB, 596.86, WDDM
+{"busy":null,"engine":true}
+downloads: 8 of 8 ready, verified, in 91 s 
+job win-gpu-sd15-lighthouse.png: done 89.8 s on GPU 
+job win-gpu-sd15-apple.png: done 15.9 s on GPU 
+job win-gpu-flux-cat.png: done 111.4 s on GPU 
+job win-gpu-flux-sign.png: done 36.8 s on GPU 
+job win-gpu-wan-boat.webm: done 492.5 s on GPU 
+{"arch":"x86_64","device":"7257a443af3a","engine":"llama.cpp: CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 |","link":"https://planetcompute.ai/device/7257a443af3a/","os":"windows","pid":1436,"port":7526,"tunnel":"off: sign in to switch on the link","version":"0.1.0"}
+ mmands.InvokeRestMethodCommand
+Invoke-RestMethod : {"error":"no such image"}
+At C:\ProgramData\Amazon\SSM\InstanceData\i-<instance>\document\orchestration\1f979d73-15e8-4539-983e-152998080a
+c9\awsrunPowerShellScript\0.awsrunPowerShellScript\_script.ps1:25 char:10
++     $j = Invoke-RestMethod "$U/local/image/job/$($st.id)"
++          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (System.Net.HttpWebRequest:HttpWebRequest) [Invoke-RestMethod], WebExc 
+   eption
+    + FullyQualifiedErrorId : WebCmdletWebResponseException,Microsoft.PowerShell.Commands.InvokeRestMethodCommand
+Invoke-RestMethod : {"error":"no such image"}
+At C:\ProgramData\Amazon\SSM\InstanceData\i-<instance>\document\orchestration\1f979d73-15e8-4539-983e-152998080a
+c9\awsrunPowerShellScript\0.awsrunPowerShellScript\_script.ps1:25 char:10
++     $j = Invoke-RestMethod "$U/local/image/job/$($st.id)"
++          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (System.Net.HttpWebRequest:HttpWebRequest) [Invoke-RestMethod], WebExc 
+   eption
+    + FullyQualifiedErrorId : WebCmdletWebResponseException,Microsoft.PowerShell.Commands.InvokeRestMethodCommand
+Invoke-RestMethod : {"error":"no such image"}
+At C:\ProgramData\Amazon\SSM\InstanceData\i-<instance>\document\orchestration\1f979d73-15e8-4539-983e-152998080a
+c9\awsrunPowerShellScript\0.awsrunPowerShellScript\_script.ps1:25 char:10
++     $j = Invoke-RestMethod "$U/local/image/job/$($st.id)"
++          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (System.Net.HttpWebRequest:HttpWebRequest) [Invoke-RestMethod], WebExc 
+   eption
+    + FullyQualifiedErrorId : WebCmdletWebResponseException,Microsoft.PowerShell.Commands.InvokeRestMethodCommand
+Invoke-RestMethod : {"error":"no such image"}
+At C:\ProgramData\Amazon\SSM\InstanceData\i-<instance>\doc--output truncated--
+04:39:56 results copied to /home/ubuntu/environment/planetCompute/planetCompute-CPP/.ops/wintest/out
+04:39:56 cleaning up {"bucket": "pc-wintest-ceb32435", "role": "pc-wintest", "sg": "sg-<group>", "instance": "i-<instance>", "started": "03:46:21"}
+04:46:46 instance terminated i-<instance>
+04:46:48 security group deleted
+04:46:53 role and instance profile deleted
+04:46:55 bucket deleted pc-wintest-ceb32435

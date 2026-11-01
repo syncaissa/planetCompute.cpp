@@ -1,0 +1,10 @@
+06:17:31 POD z9r2ix2xaspu0o cost/h 0.32
+06:18:55 ssh <ip> 38061
+06:18:59 pod memory MB 30517 cpus 8 heap MB 27517
+v22.11.0
+06:54:11 started pull-1M-dir25
+06:56:13 progress ['estimated Cloudflare+DynamoDB cost per hour (check prices): $122.82 (workers 0.79, DO requests 38.38, DO duration 50.31, writes 33.34)']
+06:56:21 saved /home/ubuntu/environment/planetCompute/gridSim/results/pull-1M-dir25.log + B2
+06:56:22 saved /home/ubuntu/environment/planetCompute/gridSim/results/pull-1M-dir25.json + B2
+06:56:22 POD DELETED z9r2ix2xaspu0o
+06:56:22 done

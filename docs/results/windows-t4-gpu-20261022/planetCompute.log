@@ -1,0 +1,6 @@
+Replaced the planetCompute that was running on port 7526 (process 1436).
+planetCompute 0.1.0 --headless (windows x86_64)
+llama.cpp: CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 |
+Sign in and contribute at http://localhost:7526
+  from another computer: ssh -L 7526:localhost:7526 <this server>, then open that address there
+Contributing: off (2 cores at up to 50%). Start it on the page (I agree), or run with --contribute
