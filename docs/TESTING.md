@@ -2115,10 +2115,29 @@ the newest build" (commit c63feab) and wrote bin/planetCompute.build_time (rollb
 the old logs held the local secret printed by earlier builds, so all four local_token files (2 copies x 2 servers) were
 replaced; agent.log made 0600.
 
+## 99. A picture being made survives a newer copy replacing the program (2026-11-01)
+
+Found by `scripts/test_local_server.sh` on the macOS CI build (twice: "after a restart both pictures are back in the
+queue" failed; only the waiting picture came back). Cause: when a newer copy replaces the program, the old copy stops
+its picture engine and then exits; if the worker saw the stopped engine first, and the picture was on its last way
+(the CPU: the macOS runner's GPU fails, so the program remembers the CPU for that model), it marked the picture
+"error" and rewrote queue.json without it before the process ended, so the new copy never took it back. The same
+could happen to a user whose program updates while making a picture. Fix (`client/src/image.rs`): a QUITTING flag,
+set before the engines are stopped; while it is set the old copy does not record the stop as a failure, does not
+retry, starts no new picture and leaves queue.json as it is.
+Steps (no models, no GPU): build the program with a stand-in engine and run `bash scripts/test_picture_restart.sh
+<program> 8` (instructions at the top of the script): per round two pictures are queued, the first is being made, a
+second copy replaces the first, and both pictures must be back in the queue.
+Result (RunPod CPU pod, 2026-11-01): old code 7 of 8 rounds (round 3 lost the picture being made); with a 0.5 s pause
+added between stopping the engine and exiting (as on a slower computer) the old code lost it every time, and the
+quit left queue.json with only the waiting picture; fixed code 8 of 8 rounds, and with the pause the picture stays in
+queue.json. Rust tests 28/28.
+
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-01 14:00 | 99 picture survives a newer copy replacing the program | program (this commit), stand-in engine | old 7/8 rounds (one picture lost), fixed 8/8; Rust 28/28 |
 | 2026-11-01 12:00 | Same request on two machines, recomputed from the saved pictures (`python3 scripts/compare_pictures.py`, needs numpy + Pillow) | pictures of 2026-10-22 in docs/results/ | pixels equal 4.3/1.4/9.6/5.8%, mean difference 4.07/4.43/1.17/1.61, within 8 levels 81.8/79.2/98.3/97.3%, SSIM 0.940/0.956/0.987/0.992; different pictures 0.19-0.45 (docs/results/compare_pictures.txt) |
 | 2026-11-01 10:25 | 98 security fixes | site dea135ea; program (this commit) | Rust 28/28, workpack ALL PASS; site tests as old code + new checks pass (grid 22/22, my 26/26, audit 23/23); deployed |
 | 2026-10-31 19:00 | 92 close message now 10 s (fallback 13 s) | program (this commit) | 92 9/9 with OK (10), countdown 8-7 after 2 s, hide after 10 s once |

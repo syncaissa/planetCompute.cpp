@@ -127,6 +127,12 @@ pub struct Images {
 
 const WAITING: [&str; 4] = ["queued", "loading", "sampling", "decoding"];
 
+/// Set when this copy is ending (a newer copy replaced it, or it quits): the engine is stopped on purpose, so the picture
+/// being made is NOT a failure and the queue file on disk must stay as it is, for the next copy to take back. Without
+/// this, the worker could see the stopped engine, mark the picture "error" and rewrite queue.json without it before
+/// the process ended (a race; found by test_local_server.sh on macOS, 2026-11-01).
+static QUITTING: AtomicBool = AtomicBool::new(false);
+
 fn queue_file() -> PathBuf {
     data().join("queue.json")
 }
@@ -502,6 +508,9 @@ impl Images {
 
     /// Write the waiting requests to the queue file (a new file, then renamed over the old one).
     fn save_queue(&self) {
+        if QUITTING.load(Ordering::SeqCst) {
+            return; // ending: keep queue.json as it was
+        }
         // a picture a SherpaHub asked for ("sherpa": true) is not taken back after a restart: the hub gives it again
         let mut list: Vec<(u64, Value)> = self.jobs.lock().unwrap().iter()
             .filter(|(_, j)| WAITING.contains(&j.state.as_str()) && j.req["sherpa"] != true)
@@ -549,6 +558,10 @@ impl Images {
         }
         let me = self.clone();
         std::thread::spawn(move || loop {
+            if QUITTING.load(Ordering::SeqCst) {
+                me.worker.store(false, Ordering::SeqCst);
+                return; // ending: start nothing new
+            }
             let next = {
                 let g = me.jobs.lock().unwrap();
                 g.iter().filter(|(_, j)| j.state == "queued").min_by_key(|(_, j)| j.at).map(|(id, _)| id.clone())
@@ -703,6 +716,9 @@ impl Images {
             let mut full = a.clone();
             full.extend(extra.iter().map(|x| x.to_string()));
             let r = self.attempt(&exe, &full, id);
+            if QUITTING.load(Ordering::SeqCst) {
+                return; // the engine was stopped because this copy is ending: not a failure, no retry
+            }
             let mut g = self.jobs.lock().unwrap();
             let Some(j) = g.get_mut(id) else { return };
             if j.state == "cancelled" {
@@ -859,6 +875,7 @@ impl Images {
 
 /// Stop the image engine when the program ends (it is started again from the queue next time).
 pub(crate) fn stop_engines() {
+    QUITTING.store(true, Ordering::SeqCst); // first, so the worker does not take the stop for a failure
     stop_leftover_engines();
 }
 
