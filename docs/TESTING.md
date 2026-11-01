@@ -2151,10 +2151,24 @@ not start another, 7 accounts in one batch (top root = batch root), the cron sta
 wallets. Also run with 200,000 accounts: 20 batches, 22 steps, about 1.2 s per batch, 13/13. Before 1 December 2026 no
 epoch had been sealed.
 
+## 101. Sign-in code requests: the person check, and who asked (2026-11-01)
+
+Codes for one address kept being requested (5 in an hour, no wrong codes tried). Two changes in `website/worker.js`:
+(1) every code email says who asked: IP address, approximate place, browser or the planetCompute program, and the time;
+(2) Cloudflare Turnstile ("are you a person") now guards code requests for EXISTING accounts too, when they come from a
+browser (it already guarded new accounts). The planetCompute program's window cannot show the check, so its requests
+(user agent `planetCompute/...`) keep only the existing limits (5 codes per address per hour, per-network limits); a
+program user signing up for a NEW account is still sent to the website for the check. Note: that user agent can be
+copied, so the program path is protected by the limits, not by the check.
+Steps: `node scripts/test_signin_turnstile.mjs website/worker.js` (fake DynamoDB, rate limiter, Turnstile and email).
+Result (2026-11-01): 10/10. Live (site e9590176): a scripted browser request for an existing address got 428
+need_turnstile and no code was sent. Regression: test_auth_codes 6/7 (check 7 as before this change).
+
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-01 15:35 | 101 Turnstile on sign-in code requests; code email names who asked | site e9590176 | 10/10; live: browser request without the check refused, no code sent |
 | 2026-11-01 15:15 | 100 batched monthly balance seal | site (this commit) | 13/13 at 25,000 accounts; 13/13 at 200,000 (20 batches, ~1.2 s each) |
 | 2026-11-01 14:00 | 99 picture survives a newer copy replacing the program | program (this commit), stand-in engine | old 7/8 rounds (one picture lost), fixed 8/8; Rust 28/28 |
 | 2026-11-01 12:00 | Same request on two machines, recomputed from the saved pictures (`python3 scripts/compare_pictures.py`, needs numpy + Pillow) | pictures of 2026-10-22 in docs/results/ | pixels equal 4.3/1.4/9.6/5.8%, mean difference 4.07/4.43/1.17/1.61, within 8 levels 81.8/79.2/98.3/97.3%, SSIM 0.940/0.956/0.987/0.992; different pictures 0.19-0.45 (docs/results/compare_pictures.txt) |

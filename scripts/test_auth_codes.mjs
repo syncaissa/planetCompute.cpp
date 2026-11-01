@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync, mkdtempSync } from "node:fs"; import { tmpdir } from "node:os"; import { join } from "node:path"; import { randomBytes } from "node:crypto";
 let src = readFileSync(process.argv[2], "utf8");
 const swap = (o, n) => { if (!src.includes(o)) throw new Error("not found: " + o); src = src.replace(o, n); };   // never send real e-mail from a test
-swap("async function sendCodeEmail(env, to, code, purpose) {", "async function sendCodeEmail(env, to, code, purpose) { (globalThis.__mails = globalThis.__mails || []).push({ to: [to], text: String(code) }); return;");
+swap("async function sendCodeEmail(env, to, code, purpose, request) {", "async function sendCodeEmail(env, to, code, purpose, request) { (globalThis.__mails = globalThis.__mails || []).push({ to: [to], text: String(code) }); return;");
 swap("async function sendEmail(env, { to, subject, text, html, replyTo }) {", "async function sendEmail(env, { to, subject, text, html, replyTo }) { (globalThis.__mails = globalThis.__mails || []).push({ to, subject, text }); return;");
 src += "\nglobalThis.__G = { ddb, M, ContactGuard };\n";
 const tmp = join(mkdtempSync(join(tmpdir(), "au-")), "w.mjs"); writeFileSync(tmp, src); globalThis.WebSocketRequestResponsePair = class {};

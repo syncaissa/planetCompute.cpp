@@ -472,17 +472,24 @@ async function newAccountCheck(env, request, email, body) {
   if (DISPOSABLE_DOMAINS.has(email.split("@")[1])) return json({ error: "Please use a permanent email address." }, 400);
   const other = await getItem(env, `CANON#${canonEmail(email)}`, "CANON");
   if (other) return json({ error: `An account already exists for this address (${maskEmail(other.email || "")}): please sign in with that address.` }, 409);
-  if (env.TURNSTILE_SECRET) {
-    if (!body.turnstile) return json({ need_turnstile: true, sitekey: env.TURNSTILE_SITEKEY || "", signup_url: new URL(request.url).origin + "/?auth=signup",
-      error: "New account: please complete the check below, then press the button again." }, 428);
-    const fd = new FormData(), ip = request.headers.get("cf-connecting-ip") || "";
-    fd.append("secret", env.TURNSTILE_SECRET); fd.append("response", String(body.turnstile).slice(0, 4096)); if (ip) fd.append("remoteip", ip);
-    let ok = false;
-    try { ok = !!(await (await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: fd })).json()).success; } catch (e) {}
-    if (!ok) return json({ need_turnstile: true, sitekey: env.TURNSTILE_SITEKEY || "", error: "The check did not pass: please try it again." }, 428);
-  }
+  const no = await turnstileCheck(env, request, body, "New account: please complete the check below, then press the button again.");
+  if (no) return no;
   return authLimit(env, request, "newacct", true);
 }
+// Cloudflare Turnstile on a sign-in code request (null = passed, or Turnstile is not configured). New accounts always;
+// existing accounts too since 2026-11-01 (user: codes for one address kept being requested), except from the
+// planetCompute program, whose window cannot show the check: its requests keep the per-address and per-network limits.
+async function turnstileCheck(env, request, body, ask) {
+  if (!env.TURNSTILE_SECRET) return null;
+  if (!body.turnstile) return json({ need_turnstile: true, sitekey: env.TURNSTILE_SITEKEY || "", signup_url: new URL(request.url).origin + "/?auth=signup",
+    error: ask }, 428);
+  const fd = new FormData(), ip = request.headers.get("cf-connecting-ip") || "";
+  fd.append("secret", env.TURNSTILE_SECRET); fd.append("response", String(body.turnstile).slice(0, 4096)); if (ip) fd.append("remoteip", ip);
+  let ok = false;
+  try { ok = !!(await (await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: fd })).json()).success; } catch (e) {}
+  return ok ? null : json({ need_turnstile: true, sitekey: env.TURNSTILE_SITEKEY || "", error: "The check did not pass: please try it again." }, 428);
+}
+const fromProgram = (request) => /^planetCompute\//.test(request.headers.get("user-agent") || "");
 async function createUser(env, email) {
   for (let i = 0; i < 5; i++) {
     const id = newUserId(), t = iso();
@@ -3713,7 +3720,12 @@ async function handleApi(request, env, url) {
       if (!email) return json({ error: "Enter a valid email address." }, 400);
       const lim = await authLimit(env, request, "start");
       if (lim) return lim;
-      if (!(await userForEmail(env, email))) {
+      if (await userForEmail(env, email)) {
+        if (!fromProgram(request)) {
+          const no = await turnstileCheck(env, request, body, "Please complete the quick check below (it shows you are a person), then press the button again.");
+          if (no) return no;
+        }
+      } else {
         const no = await newAccountCheck(env, request, email, body); if (no) return no;
         // security review M3: verify creates an account only for an address whose new-account checks passed here
         await ddb(env, "PutItem", { TableName: tableName(env), Item: M({ pk: `NEWOK#${email}`, sk: "NEWOK", at: now(), ttl: now() + 3600 }) });
