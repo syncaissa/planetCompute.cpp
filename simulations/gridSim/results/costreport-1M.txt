@@ -1,0 +1,15 @@
+# Cost of the million-device runs, re-priced by status-report style (paper Section 8 and its cost table).
+# Made 2026-11-01 with:
+#   cd simulations/gridSim && node sim/costreport.js cost-v1-1M:site cost-v1-1M:site2 cost-v1-1M:ws300 cost-v2-1M:ws300 cost-v2fix-1M:ws300
+# site  = reports to the website once a minute (as first built): the paper's $195.70
+# site2 = reports to the website every 5 min working / 15 min idle
+# ws300 = reports on the open WebSocket every 5 min: the paper's $111.54 (original), $9.82 and $9.80 (low-cost)
+# The cost-v1-1M log's $111.86 is the same run priced with reports every 60 s on the WebSocket.
+# List prices are in sim/config.js; check current prices before relying on them.
+
+run                          hb      online  orchestr.v1 orch.billed heartbeat   total/h  per month 24x7  x10 (1M) per month
+cost-v1-1M                   site    905795   122.49      111.46    84.24   195.70      142857       1428575
+cost-v1-1M                   site2   905795   122.49      111.46    18.75   130.21       95051        950505
+cost-v1-1M                   ws300   905795   122.49      111.46     0.08   111.54       81423        814226
+cost-v2-1M                   ws300   911812    16.37        9.73     0.08     9.82        7165         71653
+cost-v2fix-1M                ws300   910509    16.51        9.72     0.08     9.80        7157         71575

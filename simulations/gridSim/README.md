@@ -77,3 +77,19 @@ bash sim/scenarios.sh                                                           
   up to 2 M); demand per lane is `load` x its nominal capacity.
 - Durable Objects: single-threaded, 0.5 ms per message plus 0.02 ms per item in a batch, so a hot
   object queues up as it would on Cloudflare; 2-10 ms between objects, ~40 ms to a device.
+
+## Where the paper's numbers come from
+
+Paper Section 8 ("Orchestration at a Million Devices"); every file is in `results/`. Average devices online is
+not stored as one number: it is the sum of `lanes[].devices` in a run's JSON.
+
+| Paper | File |
+|---|---|
+| Million devices with the fixes: 1,151,633 came and went, 917,629 online, 253,881 of 261,125 jobs finished, 186,057 cheating answers caught, 42 directories, busiest 411 messages/s | `pull-1M-dir25.json` / `.log` |
+| Orchestrator table, first row (10^6 before the fixes, 916,831 online) | `before-15.7abc/pull-1M.json` / `.log` |
+| Orchestrator table, 10^5 rows (pull, push, steal, deploy jitter, 30% lost, burst, 40 networks, 90% demand) | `before-15.7abc/<scenario>-100000.json`; all logged in `scenarios-100k.log` |
+| Sleeper cheaters (5,278 before; 2,031 / 1,947 / 84 / 2,049 after) | `before-15.7abc/sleepers-100000.json`, `sleepers-100000.json` |
+| Admission (burst stalls 23 -> 3, refused 2,815 -> 7,975); 90% demand 6,319 -> 4,633 stalled | `before-15.7abc/burst-100000.json`, `burst-100000.json`; `before-15.7abc/load90-100000.json`, `load90-100000.json` |
+| Faults in the platform, 20,000 devices: nothing retried / retries without IDs / the simple design | `faults-20k-r0`, `faults-20k-r1`, `faults-20k-r2` (`.json` / `.log`) |
+| Cost table: original, low-cost first run, low-cost with the fix | `cost-v1-1M`, `cost-v2-1M`, `cost-v2fix-1M` (`.json` / `.log`) |
+| \$195.70, \$111.54, \$9.82, \$9.80 an hour (the runs re-priced by status-report style) | `costreport-1M.txt` (the command is at its top) |
