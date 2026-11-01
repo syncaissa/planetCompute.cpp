@@ -37,6 +37,14 @@ class_name = "SherpaBroker"
 tag = "v4-sherpa-broker"
 new_sqlite_classes = ["SherpaBroker"]
 
+[[durable_objects.bindings]]
+name = "SEALJOB"
+class_name = "SealJob"
+
+[[migrations]]
+tag = "v5-seal-job"
+new_sqlite_classes = ["SealJob"]
+
 # hourly: heartbeat servers health check + "no server running" email to the admins (hbCron)
 [triggers]
 crons = ["17 * * * *", "47 * * * *", "23 3 1 * *"]   # 17: heartbeat servers; 47: my.planetcompute.ai view totals + config.json; 23 3 1 * *: monthly balance seal

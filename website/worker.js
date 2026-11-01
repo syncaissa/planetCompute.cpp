@@ -340,16 +340,31 @@ async function getItem(env, pk, sk) {
   return U((await ddb(env, "GetItem", { TableName: tableName(env), Key: M({ pk, sk }), ConsistentRead: true })).Item);
 }
 
-async function sendCodeEmail(env, to, code, purpose) {
+// Who asked for the code (user 2026-11-01: codes kept arriving): IP address, approximate place, browser or program, time
+function codeRequestedFrom(request) {
+  if (!request) return "";
+  const cf = request.cf || {}, ip = request.headers.get("cf-connecting-ip") || "unknown";
+  const place = [cf.city, cf.region, cf.country].filter(Boolean).join(", ");
+  const ua = request.headers.get("user-agent") || "";
+  const app = /^planetCompute\//.test(ua) ? "the planetCompute program (" + ua.split(" ")[0] + ")"
+    : /Edg\//.test(ua) ? "Microsoft Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome"
+    : /Safari\//.test(ua) ? "Safari" : ua ? ua.slice(0, 60) : "an unknown program";
+  const os = /Windows/.test(ua) ? " on Windows" : /Mac OS X|Macintosh/.test(ua) ? " on macOS" : /Android/.test(ua) ? " on Android"
+    : /iPhone|iPad/.test(ua) ? " on iOS" : /Linux/.test(ua) ? " on Linux" : "";
+  return `Requested from IP address ${ip}${place ? " (" + place + ")" : ""}, using ${app}${os}, at ${iso().slice(0, 16).replace("T", " ")} UTC.`;
+}
+async function sendCodeEmail(env, to, code, purpose, request) {
+  const from = codeRequestedFrom(request);
   const region = env.AWS_REGION || "us-east-1";
   const what = purpose.startsWith("add") ? "add this email address to your PlanetCompute account" : purpose === "wallet" ? "confirm a new Solana wallet address on your PlanetCompute account (transfers go there)"
     : purpose === "move" ? "confirm sending coins from a PlanetCompute wallet (admin)" : "sign in to PlanetCompute";
   const text = `Your PlanetCompute code is ${code}\n\nUse it to ${what}. It expires in 10 minutes and can be used once.\n` +
-    `If you did not ask for it, ignore this email: nothing happens without the code.${purpose === "wallet" || purpose === "move" ? " Someone may have your sign-in: sign out everywhere and tell us." : ""}\n\nhttps://planetcompute.ai`;
+    (from ? from + "\n" : "") + `If you did not ask for it, ignore this email: nothing happens without the code.${purpose === "wallet" || purpose === "move" ? " Someone may have your sign-in: sign out everywhere and tell us." : ""}\n\nhttps://planetcompute.ai`;
   const htmlBody = `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#14182b">` +
     `<h2 style="margin:0 0 12px">Your PlanetCompute code</h2><p>Use this code to ${what}:</p>` +
     `<p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:18px 0">${code}</p>` +
     `<p>It expires in 10 minutes and can be used once. If you did not ask for it, ignore this email: nobody can sign in without the code.</p>` +
+    (from ? `<p style="color:#445;font-size:13px">${escHtml(from)}</p>` : "") +
     `<p style="color:#667;font-size:13px">PlanetCompute · https://planetcompute.ai</p></div>`;
   const subject = `${code} is your PlanetCompute code`;
   if (env.RESEND_API_KEY) {
@@ -378,7 +393,7 @@ const codeHash = (env, purpose, email, code) => sha256hex(`${authSecret(env)}|co
 
 // Security review L3: wrong codes per address over a day; at OTP_FAIL_LOCK no new codes for that address until it passes
 const OTP_FAIL_LOCK = 15;   // per address per UTC day
-async function issueCode(env, purpose, email) {
+async function issueCode(env, purpose, email, request) {
   const pk = `OTP#${purpose}#${email}`, t = now();
   const fails = await getItem(env, `OTPFAIL#${email}#${Math.floor(t / 86400)}`, "OTPFAIL");   // today's (UTC) wrong codes
   if (fails && Number(fails.n || 0) >= OTP_FAIL_LOCK)
@@ -393,7 +408,7 @@ async function issueCode(env, purpose, email) {
     pk, sk: "OTP", code_hash: await codeHash(env, purpose, email, code), issued_at: t, expires_at: t + CODE_TTL_S,
     attempts: 0, sends, window_start: inWindow ? prev.window_start : t, ttl: t + 3600 + CODE_TTL_S }) });
   try {
-    await sendCodeEmail(env, email, code, purpose);
+    await sendCodeEmail(env, email, code, purpose, request);
   } catch (e) {
     console.log("email send failed", e && e.message);
     // undo, so the volunteer can try again at once and the failed send does not count against the limit
@@ -686,7 +701,7 @@ async function setSolanaAddress(env, request, userId, address, code) {
   const email = p.primary_email || "";
   if (!email) return json({ error: "Your account has no email address to confirm this with." }, 409);
   if (!String(code || "").trim()) {                       // step 1: a code to the account's email
-    const r = await issueCode(env, "wallet", email);
+    const r = await issueCode(env, "wallet", email, request);
     if (!r.ok) return json({ error: r.error }, r.status);
     return json({ need_code: true, sent_to: maskEmail(email), error: `We emailed a code to ${maskEmail(email)} to confirm the new address.` }, 428);
   }
@@ -1469,6 +1484,10 @@ async function handleWallet(env, me, path, method, body) {
         included: !!lf, balance_at_epoch: lf ? fromBase(env, lf.balance_npcc.N) : "0", balance_base: lf ? lf.balance_npcc.N : "0",
         available_uwu: lf ? lf.available_uwu.N : "0", available_wu_at_epoch: lf ? fromUwu(lf.available_uwu.N) : "0",
         leaf: lf ? lf.leaf.S : "", proof: lf ? JSON.parse(lf.proof.S) : [] };
+      if (lf && lf.batch) {                                                 // a batched seal: batch path, then the batch's path to the top root
+        const bt = (await ddb(env, "GetItem", { TableName: creditsTable(env), Key: { user_id: S_(`EPOCH#${n}#BATCH`), sk: S_(String(Number(lf.batch.N)).padStart(6, "0")) } })).Item;
+        if (bt) epoch.proof = epoch.proof.concat(JSON.parse(bt.proof.S));
+      }
     }
     const rules = await rulesCached(env), bo = bonusOf(env, b, rules), cur = ruleAt(rules, iso());
     return json({ wallet_enabled: walletOn(env), wallet_test: walletTest(env), cluster: cluster(env), balance: fromBase(env, b.balance),
@@ -1961,65 +1980,121 @@ async function payoutPlan(env, amount) {
 const legView = (l) => ({ coin_id: l.coin_id, name: l.name, symbol: l.symbol, pct: l.pct, mint: l.mint, from: l.from,
   amount: (() => { const d = BigInt(l.decimals), w = l.units / 10n ** d, f = (l.units % 10n ** d).toString().padStart(l.decimals, "0").replace(/0+$/, ""); return f ? `${w}.${f}` : `${w}`; })() });
 
-// Phase A: seal an epoch: Merkle root of every balance, written on chain from the treasury. Each user's leaf
-// and Merkle proof are stored as their own item (EPOCH#<n>#<user_id>, LEAF), so the snapshot has no size limit.
-// Run from the admin page this reads every BALANCE item in one request, which suits up to roughly 20,000
-// accounts; beyond that the same steps run as a batch job (a Durable Object alarm or a script).
-async function sealEpoch(env, me, opts = {}) {
+// Seal an epoch: a Merkle root over every account's balance, written on chain from the treasury, with each account's
+// leaf and proof stored as its own item (EPOCH#<n>#<user_id>, LEAF). Batched (user 2026-11-01), so it works at any
+// number of accounts: the Durable Object SealJob reads SEAL_BATCH balances per step (one alarm per batch, each well
+// inside the platform's per-run limits), stores their leaves with the proof to the BATCH root, and when every balance is
+// read, writes ONE top root (the Merkle root over the batch roots) on chain: one transaction per seal. The top proof of
+// each batch is stored as EPOCH#<n>#BATCH / <k>, and /api/me/credit joins the two paths, so the My Balance check
+// (leaf -> root) is unchanged. With one batch the top root is that batch's root. Balances are read batch by batch, so a
+// seal records each balance as read during the run, not at one instant. Started by the monthly cron (SEAL_CRON) and by
+// the admin page's Seal button; one seal at a time; a failing step is retried, then the admins get an email.
+const SEAL_CRON = "23 3 1 * *", SEAL_BATCH = 10000, SEAL_PAGES = 300, SEAL_TRIES = 5;
+const sealStub = (env) => env.SEALJOB.get(env.SEALJOB.idFromName("seal"));
+const sealView = (j) => ({ epoch: j.n, by: j.by, started_at: j.started, batches: j.roots.length, accounts: j.accounts, reading_done: j.done });
+async function startSeal(env, by) {
   if (!walletOn(env)) return json({ error: "Wallets are not configured on this server yet." }, 503);
-  const rows = [];
-  let start;
-  do {
-    const r = await ddb(env, "Scan", { TableName: creditsTable(env), FilterExpression: "sk = :b", ExpressionAttributeValues: { ":b": S_("BALANCE") },
-      ...(start ? { ExclusiveStartKey: start } : {}) });
-    for (const it of r.Items || []) rows.push([it.user_id.S, it.balance_npcc ? it.balance_npcc.N : "0", it.available_uwu ? it.available_uwu.N : "0"]);
-    start = r.LastEvaluatedKey;
-  } while (start);
-  if (opts.max && rows.length > opts.max)   // the scheduled seal: too many accounts for one request (nothing written)
-    return json({ error: `${rows.length} accounts: more than one request can seal (${opts.max}); run the batch job`, accounts: rows.length }, 413);
-  rows.sort((a, b) => (a[0] < b[0] ? -1 : 1));
-  const leaves = await Promise.all(rows.map((x) => leafHash(x[0], x[1], x[2])));
-  const { root, layers } = await merkle(leaves);
-  const prev = await latestEpoch(env), n = prev ? Number(prev.n.N) + 1 : 1;
-  const { kp } = await treasury(env);
-  const memo = `planetcompute:${cluster(env)}:epoch:${n}:root:${root}:accounts:${rows.length}`;
-  const res = await sendFromTreasury(env, [ixMemo(memo, kp.publicKey)]);
-  if (res.ok === false) return json({ error: "Could not write the epoch on chain: " + res.error }, 502);
-  const leafItems = rows.map((x, i) => ({ PutRequest: { Item: { user_id: S_(`EPOCH#${n}#${x[0]}`), sk: S_("LEAF"), n: N(n),
-    balance_npcc: N(x[1]), available_uwu: N(x[2]), leaf: S_(leaves[i]), proof: S_(JSON.stringify(proofFor(layers, i))) } } }));
-  for (let i = 0; i < leafItems.length; i += 25) {
-    let req = { [creditsTable(env)]: leafItems.slice(i, i + 25) };
-    for (let tries = 0; tries < 6 && req && Object.keys(req).length; tries++) {
+  if (!env.SEALJOB) return json({ error: "The seal job is not set up on this server (Durable Object SEALJOB)." }, 503);
+  const r = await sealStub(env).fetch("https://seal.internal/start", { method: "POST", body: JSON.stringify({ by }) });
+  return json(await r.json(), r.status);
+}
+async function sealCron(env) {
+  if (!walletOn(env) || !env.SEALJOB) { console.log("seal cron: wallets or the seal job are not set up: skipped"); return { skipped: true }; }
+  const d = await (await startSeal(env, "scheduled")).json().catch(() => ({}));
+  console.log("seal cron:", JSON.stringify(d));
+  return d;
+}
+async function batchWrite(env, items) {
+  for (let i = 0; i < items.length; i += 25) {
+    let req = { [creditsTable(env)]: items.slice(i, i + 25) };
+    for (let tries = 0; req && Object.keys(req).length; tries++) {
+      if (tries >= 8) throw new Error("DynamoDB kept items unprocessed");
       const r = await ddb(env, "BatchWriteItem", { RequestItems: req });
       req = r.UnprocessedItems;
       if (req && Object.keys(req).length) await new Promise((res) => setTimeout(res, 200 * (tries + 1)));
     }
   }
-  await ddb(env, "PutItem", { TableName: creditsTable(env), Item: { user_id: S_("EPOCH"), sk: S_(`EPOCH#${String(n).padStart(8, "0")}`),
-    n: N(n), root: S_(root), signature: S_(res.signature), accounts: N(rows.length),
-    memo: S_(memo), by: S_(me.user_id), at: S_(iso()) } });
-  return json({ ok: true, epoch: n, root, accounts: rows.length, signature: res.signature, explorer: explorerTx(env, res.signature), memo });
 }
-
-// The monthly seal (user 2026-11-01): cron SEAL_CRON = 03:23 UTC on the 1st of each month, the same steps as the admin
-// button. Skipped while wallets are not configured. Not run above SEAL_CRON_MAX accounts (one request reads every
-// balance and writes every proof; a larger grid needs the batch job), and then, or when the seal fails, the admins get
-// an email. The epoch list (admin page) shows every seal.
-const SEAL_CRON = "23 3 1 * *", SEAL_CRON_MAX = 20000;
-async function sealCron(env) {
-  if (!walletOn(env)) { console.log("seal cron: wallets are not configured: skipped"); return { skipped: true }; }
-  const r = await sealEpoch(env, { user_id: "scheduled" }, { max: SEAL_CRON_MAX });
-  const d = await r.json().catch(() => ({}));
-  if (r.ok) { console.log("seal cron: epoch", d.epoch, "accounts", d.accounts, "signature", d.signature); return d; }
-  console.log("seal cron failed:", r.status, d.error);
-  const admins = adminEmailList(env);
-  if (admins.length) {
-    await sendEmail(env, { to: admins, subject: "[planetcompute.ai] The monthly balance seal did not run",
-      text: [`The scheduled seal of all balances on chain (${iso()}) did not run: ${d.error || "status " + r.status}.`, "",
-        "Nothing was written. Seal from the admin page when the cause is fixed: https://planetcompute.ai/admin"].join("\n") })
-      .catch((e) => console.log("seal cron email", e && e.message));
+// One step: read up to SEAL_BATCH balances from where the last step stopped, store their leaves and batch proofs.
+async function sealBatch(env, job) {
+  const rows = [];
+  let start = job.start, pages = 0;
+  do {
+    const r = await ddb(env, "Scan", { TableName: creditsTable(env), FilterExpression: "sk = :b", ExpressionAttributeValues: { ":b": S_("BALANCE") },
+      ProjectionExpression: "user_id, balance_npcc, available_uwu", ...(start ? { ExclusiveStartKey: start } : {}) });
+    for (const it of r.Items || []) rows.push([it.user_id.S, it.balance_npcc ? it.balance_npcc.N : "0", it.available_uwu ? it.available_uwu.N : "0"]);
+    start = r.LastEvaluatedKey || null; pages++;
+  } while (start && rows.length < SEAL_BATCH && pages < SEAL_PAGES);
+  if (rows.length) {
+    rows.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    const k = job.roots.length, leaves = await Promise.all(rows.map((x) => leafHash(x[0], x[1], x[2])));
+    const { root, layers } = await merkle(leaves);
+    await batchWrite(env, rows.map((x, i) => ({ PutRequest: { Item: { user_id: S_(`EPOCH#${job.n}#${x[0]}`), sk: S_("LEAF"), n: N(job.n), batch: N(k),
+      balance_npcc: N(x[1]), available_uwu: N(x[2]), leaf: S_(leaves[i]), proof: S_(JSON.stringify(proofFor(layers, i))) } } })));
+    job.roots.push(root); job.counts.push(rows.length); job.accounts += rows.length;
   }
-  return d;
+  job.start = start; job.done = !start;
+}
+// Last step: the top root on chain (once, even if a later write is retried), the batch top proofs, then the epoch.
+async function sealFinish(env, job, save) {
+  const { root, layers } = await merkle(job.roots);
+  const memo = `planetcompute:${cluster(env)}:epoch:${job.n}:root:${root}:accounts:${job.accounts}:batches:${job.roots.length}`;
+  if (!job.signature) {
+    const { kp } = await treasury(env);
+    const res = await sendFromTreasury(env, [ixMemo(memo, kp.publicKey)]);
+    if (res.ok === false) throw new Error("could not write the epoch on chain: " + res.error);
+    job.signature = res.signature; await save(job);                       // written on chain: never send it twice
+  }
+  await batchWrite(env, job.roots.map((r, k) => ({ PutRequest: { Item: { user_id: S_(`EPOCH#${job.n}#BATCH`), sk: S_(String(k).padStart(6, "0")),
+    n: N(job.n), root: S_(r), accounts: N(job.counts[k]), proof: S_(JSON.stringify(proofFor(layers, k))) } } })));
+  await ddb(env, "PutItem", { TableName: creditsTable(env), Item: { user_id: S_("EPOCH"), sk: S_(`EPOCH#${String(job.n).padStart(8, "0")}`),
+    n: N(job.n), root: S_(root), signature: S_(job.signature), accounts: N(job.accounts), batches: N(job.roots.length),
+    memo: S_(memo), by: S_(job.by), started_at: S_(job.started), at: S_(iso()) } });
+  return { epoch: job.n, root, accounts: job.accounts, batches: job.roots.length, signature: job.signature, explorer: explorerTx(env, job.signature) };
+}
+export class SealJob {
+  constructor(state, env) { this.state = state; this.env = env; }
+  async fetch(request) {
+    const path = new URL(request.url).pathname;
+    if (path === "/status") return Response.json({ running: !!(await this.state.storage.get("job")), job: await this.state.storage.get("job") || null, last: await this.state.storage.get("last") || null });
+    if (path !== "/start") return new Response("not found", { status: 404 });
+    const cur = await this.state.storage.get("job");
+    if (cur) return Response.json({ ok: true, already: true, ...sealView(cur) });
+    const b = await request.json().catch(() => ({})), prev = await latestEpoch(this.env);
+    const job = { n: prev ? Number(prev.n.N) + 1 : 1, by: String(b.by || "scheduled").slice(0, 40), started: iso(), start: null, roots: [], counts: [],
+      accounts: 0, done: false, signature: "", tries: 0 };
+    await this.state.storage.put("job", job);
+    await this.state.storage.setAlarm(Date.now() + 100);
+    return Response.json({ ok: true, started: true, ...sealView(job) });
+  }
+  async alarm() {
+    const job = await this.state.storage.get("job");
+    if (!job) return;
+    const save = (j) => this.state.storage.put("job", j);
+    try {
+      if (!job.done) {
+        await sealBatch(this.env, job);
+        job.tries = 0; await save(job);
+        await this.state.storage.setAlarm(Date.now() + 200);              // the next batch (or the last step)
+        return;
+      }
+      const out = await sealFinish(this.env, job, save);
+      await this.state.storage.put("last", { ok: true, at: iso(), ...out });
+      await this.state.storage.delete("job");
+      console.log("seal: epoch", out.epoch, "accounts", out.accounts, "batches", out.batches, out.signature);
+    } catch (e) {
+      job.tries = (job.tries || 0) + 1; await save(job);
+      console.log("seal step failed", job.tries, e && e.message);
+      if (job.tries < SEAL_TRIES) { await this.state.storage.setAlarm(Date.now() + 30000 * job.tries); return; }
+      await this.state.storage.put("last", { ok: false, at: iso(), epoch: job.n, error: String(e && e.message), signature: job.signature || "" });
+      await this.state.storage.delete("job");
+      const admins = adminEmailList(this.env);
+      if (admins.length) await sendEmail(this.env, { to: admins, subject: "[planetcompute.ai] The balance seal did not finish",
+        text: [`Sealing epoch ${job.n} stopped after ${SEAL_TRIES} tries: ${e && e.message}.`, `Batches done: ${job.roots.length}, accounts: ${job.accounts}.`,
+          job.signature ? `The root WAS written on chain (${job.signature}); only the stored records are incomplete.` : "Nothing was written on chain.",
+          "", "Start it again from the admin page: https://planetcompute.ai/admin"].join("\n") }).catch((x) => console.log("seal email", x && x.message));
+    }
+  }
 }
 
 // --- machine ratings (effective-dated, audited; pk "RATING" in <prefix>howCreditAwarded) ---
@@ -3234,7 +3309,8 @@ async function handleAdmin(env, me, path, method, body, url) {
   if (ruleResponse) return ruleResponse;
   const ratingResponse = await handleRatingsAdmin(env, me, myProf.primary_email || myEmails[0] || "", path, method, body);
   if (ratingResponse) return ratingResponse;
-  if (path === "/api/admin/credits/seal" && method === "POST") return sealEpoch(env, me);
+  if (path === "/api/admin/credits/seal" && method === "POST") return startSeal(env, me.user_id);
+  if (path === "/api/admin/credits/seal" && method === "GET") return env.SEALJOB ? json(await (await sealStub(env).fetch("https://seal.internal/status")).json()) : json({ running: false });
   if (path === "/api/admin/models" && method === "GET") return json(await listModels(env, url));
   if (path === "/api/admin/workhorses" && method === "GET") return adminWorkhorses(env, myProf.primary_email || myEmails[0] || "", path, {});
   if (path.startsWith("/api/admin/workhorses/") && method === "POST") return adminWorkhorses(env, myProf.primary_email || myEmails[0] || "", path, body);
@@ -3642,7 +3718,7 @@ async function handleApi(request, env, url) {
         // security review M3: verify creates an account only for an address whose new-account checks passed here
         await ddb(env, "PutItem", { TableName: tableName(env), Item: M({ pk: `NEWOK#${email}`, sk: "NEWOK", at: now(), ttl: now() + 3600 }) });
       }
-      const r = await issueCode(env, "signin", email);
+      const r = await issueCode(env, "signin", email, request);
       return r.ok ? json({ ok: true }) : json({ error: r.error }, r.status);
     }
     if (path === "/api/auth/verify" && request.method === "POST") {
@@ -3810,7 +3886,7 @@ async function handleApi(request, env, url) {
         // security review M2: per IP, network and account, so an account cannot make the site email strangers in bulk
         const lim = await authLimit(env, request, "addemail", false, ["user:" + me.user_id]);
         if (lim) return lim;
-        const r = await issueCode(env, `add:${me.user_id}`, email);   // the code belongs to this account's request
+        const r = await issueCode(env, `add:${me.user_id}`, email, request);   // the code belongs to this account's request
         return r.ok ? json({ ok: true }) : json({ error: r.error }, r.status);
       }
       if (action === "verify") {
@@ -8293,7 +8369,8 @@ tr:hover td { background: rgba(var(--fg-rgb),.03); }
     api("/api/admin/credits/seal", {}).then(function (x) {
       $("sealBtn").disabled = false;
       if (!x.ok) { m.className = "msg err"; m.textContent = x.data.error || "Could not seal."; return; }
-      m.className = "msg good"; m.textContent = "Sealed epoch " + x.data.epoch + " (" + x.data.accounts + " accounts)."; loadEpochs();
+      m.className = "msg good"; m.textContent = (x.data.already ? "A seal is already running: epoch " : "Seal started: epoch ") + x.data.epoch +
+        ". It reads the balances in batches and writes one root on chain; it appears in the list when done (minutes). The admins get an email if it fails."; setTimeout(loadEpochs, 60000);
     });
   };
   $("nAdd").onclick = function () {
