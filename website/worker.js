@@ -6045,6 +6045,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
     </div>
 
     <div class="auth-view" id="vAccount">
+      <div id="skipBar" role="region" aria-label="Skip for now" style="display:none;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 14px;margin:0 0 14px;border:2px solid #d4a72c;border-radius:10px;background:rgba(212,167,44,.12);font-weight:600;font-size:1rem;line-height:1.4"><span>Skip for now — I’ll update it later in my Account Profile</span><button class="btn btn-gold" id="skipNow" type="button" style="min-width:110px">Skip</button></div>
       <div class="uidbar"><span class="muted">User ID</span> <code id="uid"></code><button class="mini" id="copyUid">Copy</button></div>
       <span class="eyebrow">Your profile</span>
       <h2 id="profTitle">Profile</h2>
@@ -6952,7 +6953,7 @@ ${WORKPACK_SRC}
   function say(id, text, kind) { var m = $(id); m.textContent = text || ""; m.className = "msg" + (kind ? " " + kind : ""); }
   function openAuth() {
     authModal.classList.add("open"); document.body.style.overflow = "hidden";
-    if (me) { renderAccount(); view("vAccount"); $("skipProfile").style.display = "none"; } else { view("vEmail"); setTimeout(function () { $("authEmail").focus(); }, 30); }
+    if (me) { renderAccount(); view("vAccount"); $("skipProfile").style.display = "none"; $("skipBar").style.display = "none"; } else { view("vEmail"); setTimeout(function () { $("authEmail").focus(); }, 30); }
   }
   function closeAuth() { startAfterSignIn = false; $("signinWhy").style.display = "none"; $("signinStd").style.display = ""; authModal.classList.remove("open"); if (!modal.classList.contains("open")) document.body.style.overflow = ""; }
   function setMe(p) {
@@ -7114,15 +7115,15 @@ ${WORKPACK_SRC}
       $("verifyCode").disabled = false;
       if (!r.ok) { say("msgCode", r.data.error || "Could not sign in.", "err"); return; }
       setMe(r.data); renderAccount(); view("vAccount");
-      $("skipProfile").style.display = "";
+      $("skipProfile").style.display = ""; $("skipBar").style.display = "flex";
       if (startAfterSignIn) {                       // signed in from Start: begin giving compute right away
         startAfterSignIn = false; $("signinWhy").style.display = "none"; $("signinStd").style.display = "";
         if ($("agree").checked && !running) start();
         if (r.data.first_name) { closeAuth(); return; }
-        say("msgAcct", "Sharing compute has started. Add your name if you like, or choose Nothing to update: you can add it later from the profile menu.", "good");
+        say("msgAcct", "Sharing compute has started. Add your name if you like, or press Skip: you can add it later from your Account Profile.", "good");
         return;
       }
-      say("msgAcct", r.data.first_name ? "Welcome back, " + r.data.first_name + "." : "You are signed in. Add your name if you like, or choose Nothing to update: you can add it later from the profile menu.", "good");
+      say("msgAcct", r.data.first_name ? "Welcome back, " + r.data.first_name + "." : "You are signed in. Add your name if you like, or press Skip: you can add it later from your Account Profile.", "good");
     });
   }
   $("acctBtn").onclick = openAuth;
@@ -7139,6 +7140,7 @@ ${WORKPACK_SRC}
     try { navigator.clipboard.writeText(me.user_id); $("copyUid").textContent = "Copied"; setTimeout(function () { $("copyUid").textContent = "Copy"; }, 1500); } catch (e) {}
   };
   $("skipProfile").onclick = closeAuth;
+  $("skipNow").onclick = closeAuth;
 
   // ---- Compute Credit balance and wallet (deposit / withdraw / on-chain epoch check) ----
   var walletCfg = null;
