@@ -16,3 +16,7 @@ client/sources/) is the local copy the project keeps of everything it builds.
 
 Patch (2026-10-27): CI applies scripts/patch_sd_cli.py before building sd-cli: PC_CROP=WxH in the environment cuts each
 result (picture or video frame) to that size around its centre (1920 x 1080 from 1920 x 1088). Nothing else changes.
+
+The full source of exactly this commit (with its submodules, unpacked from the release archive whose SHA-256 is in
+SHA256SUMS) is kept in source/ in this folder (in the public repository), so the program can be rebuilt even if the
+upstream project moves; CI still clones the pinned commit.
