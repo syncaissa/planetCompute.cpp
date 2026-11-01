@@ -4136,7 +4136,7 @@ ${GLOBE_HEAD}
     var box = document.createElement("div");
     box.className = "pc-cookies"; box.setAttribute("role", "region"); box.setAttribute("aria-label", "Cookies");
     box.innerHTML = '<div><b>Cookies and local storage</b><p>We use only what the site needs: a cookie that keeps you signed in, and ' +
-      'storage in your browser for your settings. No advertising or tracking cookies. <a href="/#cookies">What we store</a></p></div>' +
+      'storage in your browser for your settings. No advertising or tracking cookies. <a href="/#cookies">What we store</a> · <a href="/docs#d-cookies">Cookie disclaimer</a></p></div>' +
       '<button type="button">OK</button>';
     box.querySelector("button").onclick = function () {
       remember(); box.remove();
@@ -5685,10 +5685,11 @@ input[type=range]:disabled { opacity: .5; cursor: default; }
 <section id="cookies">
   <div class="wrap">
     <div class="head"><span class="eyebrow">Cookies and storage</span><h2>What we store in your browser.</h2>
-      <p>Only what the site needs to work. No advertising, analytics or tracking cookies, and nothing is sold or shared.</p></div>
+      <p>Only what the site needs to work. No advertising, analytics or tracking cookies, and nothing is sold or shared. The full cookie disclaimer is in <a href="/docs#d-cookies">Docs and Disclaimer</a>.</p></div>
     <div class="grid g2 store-list">
       <div class="card"><h3>Sign-in cookie</h3><p><code>pc_session</code>: keeps you signed in for up to 30 days. Strictly necessary; removed when you sign out.</p></div>
       <div class="card"><h3>Cookie notice</h3><p><code>pc_cookies</code> and, when signed in, your account: that you have read this notice, so it is not shown again.</p></div>
+      <div class="card"><h3>Your computer's page</h3><p><code>pc_dev</code>, on device.planetcompute.ai only: lets your browser open your own computer's page through its link, for up to 12 hours.</p></div>
       <div class="card"><h3>Your settings</h3><p>Browser storage: day or night theme, where you placed the status box, and the hint you closed.</p></div>
       <div class="card"><h3>Sharing</h3><p>Browser storage: this device's ID and the session you are sharing in, so a reload continues it.</p></div>
       <div class="card"><h3>Bot check</h3><p>The question form uses Cloudflare Turnstile to stop automated mail; Cloudflare may set its own security cookie for it.</p></div>
@@ -10561,7 +10562,7 @@ its memory.</div>
   <tr><td>Other members</td><td>When your computer shares, nothing of yours. When you use the pool, the member whose computer runs your request processes its content (see the warning above).</td></tr>
   <tr><td>The public</td><td>Nothing, unless you share a link to a file. The blockchain shows pooled wallets and periodic summaries, not your name or your work.</td></tr>
 </table>
-<p>The website uses only the cookies it needs for sign-in and settings (see Cookies on the home page).</p>
+<p>The website uses only the cookies it needs for sign-in and settings: see <a href="#d-cookies">Cookies and browser storage</a> under Disclaimers.</p>
 
 <h2 id="d-account">9. Your account</h2>
 <ul>
@@ -10627,6 +10628,25 @@ is not advice.</p>
 <h3>Service</h3>
 <p>The website, the program and the pool are provided as they are, without warranties, and may change, pause or stop. Keep
 your own copies of anything important.</p>
+
+<h3 id="d-cookies">Cookies and browser storage</h3>
+<p>planetcompute.ai uses only cookies that are strictly necessary for the site to work, and storage in your browser
+for your settings. We use no advertising, analytics or tracking cookies, and we never sell or share what is stored.</p>
+<table>
+  <tr><th>Cookie</th><th>What it does</th><th>How long</th></tr>
+  <tr><td><code>pc_session</code></td><td>Keeps you signed in.</td><td>Up to 30 days; removed when you sign out.</td></tr>
+  <tr><td><code>pc_cookies</code></td><td>Remembers that you have read the cookie notice, so it is not shown again.</td><td>One year.</td></tr>
+  <tr><td><code>pc_dev</code></td><td>On device.planetcompute.ai only: lets your browser open your own computer's page through its link.</td><td>Up to 12 hours.</td></tr>
+</table>
+<p>Your browser's storage keeps your settings (day or night theme, where you placed the status box, hints you closed),
+this device's ID and the session you are sharing in. Cloudflare, which delivers the site, may set its own security
+cookies, for example for the check that you are a person on forms. The page fonts load from Google Fonts, which sees your
+IP address like any web request but sets no cookies. The planetCompute program sets one cookie for its own local page on
+your computer, <code>pc_local</code>, which never leaves your computer.</p>
+<p>These cookies are needed for sign-in and the site's basic functions, so the site cannot switch them off. You can
+block or delete cookies and site data in your browser at any time; if you do, you are signed out, the cookie notice
+appears again, and sign-in will not work while cookies are blocked. By using the site you accept these strictly
+necessary cookies.</p>
 
 <h2 id="d-contact">12. Contact</h2>
 <p>Questions: use <b>Email us a question</b> on the home page, or write to syncaissa@outlook.com. Problems: <b>Report Bugs</b>
