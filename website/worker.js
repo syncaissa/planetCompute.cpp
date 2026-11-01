@@ -6045,7 +6045,6 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
     </div>
 
     <div class="auth-view" id="vAccount">
-      <div id="skipBar" role="region" aria-label="Skip for now" style="display:none;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 14px;margin:0 0 14px;border:2px solid #d4a72c;border-radius:10px;background:rgba(212,167,44,.12);font-weight:600;font-size:1rem;line-height:1.4"><span>Skip for now — I’ll update it later in my Account Profile</span><button class="btn btn-gold" id="skipNow" type="button" style="min-width:110px">Skip</button></div>
       <div class="uidbar"><span class="muted">User ID</span> <code id="uid"></code><button class="mini" id="copyUid">Copy</button></div>
       <span class="eyebrow">Your profile</span>
       <h2 id="profTitle">Profile</h2>
@@ -6054,6 +6053,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
         <label>Last name<input class="field" id="lastName" autocomplete="family-name" maxlength="50"></label>
       </div>
       <div class="emails">
+        <div id="skipBar" role="region" aria-label="Skip for now" style="display:none;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 14px;margin:0 0 14px;border:2px solid #d4a72c;border-radius:10px;background:rgba(212,167,44,.12);font-weight:600;font-size:1rem;line-height:1.4"><span>Skip for now — I’ll update it later in my Account Profile</span><button class="btn btn-gold" id="skipNow" type="button" style="min-width:110px">Skip</button></div>
         <div class="sec-h">Solana wallet address <span class="muted">· your own wallet (Phantom, Solflare, ...): transfers from your account go here. Only the address: never a key or recovery phrase.</span></div>
         <div class="wrow"><input class="field wamt grow" id="solAddr" autocomplete="off" spellcheck="false" placeholder="Your Solana wallet address"><button class="mini" id="solSave">Update</button><button class="mini" id="solHist">Previous addresses</button></div>
         <div class="note-sm muted" id="solSince"></div>
