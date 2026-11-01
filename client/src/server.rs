@@ -199,6 +199,7 @@ pub async fn serve(listener: std::net::TcpListener, port: u16, engine: Option<Ar
     }
     let mut app = Router::new();
     if let Some(e) = engine {
+        e.set_signed_in(st.session.lock().unwrap().is_some());
         tokio::spawn(crate::contribute::run(st.clone(), e));
     }
     // / is this program's own page (the site's console is on the site port, inside the window)
@@ -1249,8 +1250,26 @@ fn load_session() -> Option<String> {
     (!t.is_empty()).then(|| t.to_string())
 }
 
-fn set_session(st: &Local, token: Option<String>) {
+/// Ask planetcompute.ai whether this sign-in still exists; only a clear "not signed in" (401) signs this program out
+/// (no answer, or any other error, changes nothing).
+pub(crate) async fn check_signed_in(st: &Local, token: &str) {
+    let r = st.http.get(format!("{}/api/me", api::SITE)).header(header::COOKIE, format!("{}={token}", api::COOKIE))
+        .timeout(Duration::from_secs(15)).send().await;
+    if r.is_ok_and(|r| r.status() == StatusCode::UNAUTHORIZED) && st.session.lock().unwrap().as_deref() == Some(token) {
+        set_session(st, None);
+    }
+}
+
+pub(crate) fn set_session(st: &Local, token: Option<String>) {
+    let was = st.session.lock().unwrap().is_some();
     *st.session.lock().unwrap() = token.clone();
+    // one source of truth (user 2026-11-01): sharing runs only while signed in
+    if let Some(e) = &st.engine {
+        if was && token.is_none() && e.settings.lock().unwrap().running {
+            println!("Signed out: sharing stopped. It starts again when this program is signed in.");
+        }
+        e.set_signed_in(token.is_some());
+    }
     let Some(f) = session_file() else { return };
     match token {
         Some(t) => {

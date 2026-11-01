@@ -613,7 +613,24 @@ async function sessionsSignOut(env, request, me, body) {
   const pick = body.all_others ? rows.filter((x) => x.pk.slice(8) !== mine && x.scope !== "worker") : rows.filter((x) => x.pk.slice(8, 24) === String(body.id || "") && x.pk.slice(8) !== mine);
   if (!body.all_others && !pick.length) return json({ error: "No such sign-in (or it is this one: use Sign out)." }, 404);
   for (const x of pick) { await ddb(env, "DeleteItem", { TableName: tableName(env), Key: M({ pk: x.pk, sk: "SESSION" }) }); forgetCachedUser(x.pk.slice(8)); }
+  await closeSessionSockets(env, me.user_id, pick.map((x) => x.pk.slice(8))).catch((e) => console.log("close sockets", e && e.message));
   return json({ ok: true, signed_out: pick.length });
+}
+// Sign-out is the one source of truth for sharing (user 2026-11-01: "when I sign off it should immediately halt the
+// Share Compute"): the capacity-check sockets opened with the ended sign-ins are closed at once, on every device of
+// the account; the page or program then asks /api/me, finds it signed out and stops.
+async function closeSessionSockets(env, userId, hashes) {
+  if (!env.POLICE || !userId || !hashes.length) return 0;
+  const devs = []; let start;
+  do {
+    const r = await ddb(env, "Query", { TableName: tableName(env), KeyConditionExpression: "pk = :p AND begins_with(sk, :d)", ProjectionExpression: "sk",
+      ExpressionAttributeValues: M({ ":p": `USER#${userId}`, ":d": "DEVICE#" }), ...(start ? { ExclusiveStartKey: start } : {}) });
+    for (const it of r.Items || []) devs.push(U(it).sk.slice(7));
+    start = r.LastEvaluatedKey;
+  } while (start && devs.length < 500);
+  const out = await Promise.all(devs.filter((d) => /^[0-9a-f]{12}$/.test(d)).map((d) => env.POLICE.get(env.POLICE.idFromName(`police:${userId}:${d}`))
+    .fetch("https://police.internal/signout", { method: "POST", body: JSON.stringify({ sess: hashes }) }).then((r) => r.json()).then((j) => j.closed || 0).catch(() => 0)));
+  return out.reduce((a, b) => a + b, 0);
 }
 const WORKER_PATHS = [["GET", "/api/me"], ["POST", "/api/volunteer/heartbeat"], ["GET", "/api/hb/config"]];   // after sign-in; the agent socket, models, tunnel come earlier
 const WORKER_SESSION_S = 8 * 86400;                       // the server's agent renews it weekly
@@ -2441,7 +2458,7 @@ async function poolMedia(request, env, url) {
       out.push({ hub: x.hub, job: x.job, task: x.task, model: x.model, prompt: x.prompt, width: x.width, height: x.height, created_at: x.created_at,
         state: j ? (it && it.state === "done" ? "done" : it && it.state === "failed" ? "failed" : j.state === "cancelled" ? "cancelled" : it && it.state === "running" ? "making" : "waiting") : "unknown",
         ready: !!(it && it.result && it.result.file), error: it && it.result && it.result.error || "", ms: it && it.result && it.result.ms || 0,
-        made_by: it && it.result && it.result.who ? (it.result.who.name || it.result.who.device || "") : "",
+        made_by: it && it.result && it.result.who ? POOL_MAKER : "",   // never the computer's name (user 2026-11-01)
         started_at: it && it.sent ? it.sent.at : "", making_on: it && it.sent ? it.sent.who : "" });
     }
     return json({ items: out });
@@ -2709,6 +2726,14 @@ export class CapacityPolice {
     if (path === "/join" || path === "/leave") return this.groupFetch(path, await request.json());
     if (path === "/check-now") return this.checkNow();
     if (path === "/tick") return this.tick(await request.json());
+    if (path === "/signout") {                                          // this sign-in ended: its sharing stops now (user 2026-11-01)
+      const b = await request.json().catch(() => ({})), gone = new Set(b.sess || []); let closed = 0;
+      for (const ws of this.state.getWebSockets()) {
+        let a = {}; try { a = ws.deserializeAttachment() || {}; } catch (e) {}
+        if (a.sess && gone.has(a.sess)) { try { ws.close(4401, "signed out"); } catch (e) {} closed++; }
+      }
+      return new Response(JSON.stringify({ closed }));
+    }
     if (path.startsWith("/grid/")) return this.gridFetch(path, request);
     if (path === "/job") {                                              // from the grid: run this job (send it to the program)
       const j = await request.json();
@@ -2721,7 +2746,7 @@ export class CapacityPolice {
     const net = "net:" + (await sha256hex(networkKey(request.headers.get("x-pc-ip")))).slice(0, 24);
     const pair = new WebSocketPair();
     this.state.acceptWebSocket(pair[1]);
-    pair[1].serializeAttachment({ user, device });
+    pair[1].serializeAttachment({ user, device, sess: request.headers.get("x-pc-sess") || "" });
     // the program's build from its User-Agent (plan_old_programs): app = the program (headless, or the window's relay)
     const ab = appBuildOfUa(request.headers.get("user-agent"));
     await this.state.storage.put("who", { user, device, net, app: !!ab, build_time: ab ? ab.build_time : 0 });
@@ -3781,7 +3806,7 @@ async function handleApi(request, env, url) {
     if (!/^[0-9a-f]{12}$/.test(device)) return json({ error: "Bad device ID." }, 400);
     const stub = env.POLICE.get(env.POLICE.idFromName(`police:${who.user_id}:${device}`));
     const h = new Headers(request.headers); h.set("x-pc-user", who.user_id); h.set("x-pc-device", device);
-    h.set("x-pc-ip", request.headers.get("cf-connecting-ip") || "");
+    h.set("x-pc-ip", request.headers.get("cf-connecting-ip") || ""); h.set("x-pc-sess", await sessionHash(env, who.token));   // closed when it signs out
     return stub.fetch(new Request(request.url, { headers: h }));
   }
   if (url.pathname === "/api/models/accept") {             // a licence agreement, from the planetCompute program
@@ -3919,9 +3944,10 @@ async function handleApi(request, env, url) {
     if (path === "/api/auth/signout" && request.method === "POST") {
       const token = cookieToken(request);
       if (token) {
-        const h = await sessionHash(env, token);
+        const h = await sessionHash(env, token), s = await getItem(env, `SESSION#${h}`, "SESSION").catch(() => null);
         await ddb(env, "DeleteItem", { TableName: tableName(env), Key: M({ pk: `SESSION#${h}`, sk: "SESSION" }) });
         forgetCachedUser(h);
+        if (s && s.user_id) await closeSessionSockets(env, s.user_id, [h]).catch((e) => console.log("close sockets", e && e.message));
       }
       return json({ ok: true }, 200, { "set-cookie": sessionCookie("", 0) });
     }
@@ -4589,7 +4615,7 @@ html.pc-menu-on .pc-cookies { visibility: hidden; }   /* the longer menu reaches
     close();
     if (hooks && hooks.signout) return hooks.signout();
     fetch("/api/auth/signout", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: "{}" })
-      .catch(function () {}).then(function () { location.reload(); });
+      .catch(function () {}).then(function () { known = ""; tell(); location.reload(); });
   }
   // the menu also takes you to every page, so there are two ways there (user 2026-10-30): the top buttons and here.
   // The home page (also /harness) opens them in place (window.pcNavHook); other pages go by address.
@@ -4644,7 +4670,44 @@ html.pc-menu-on .pc-cookies { visibility: hidden; }   /* the longer menu reaches
     ip = ip.replace(/^0+(?=\\d)/, "").replace(/\\B(?=(\\d{3})+(?!\\d))/g, ",");
     return (neg && /[1-9]/.test(ip + fp) ? "-" : "") + ip + (dp ? "." + fp : "");
   };
-  window.pcAccount = { set: function (p) { me = p && (p.user_id || email(p)) ? p : null; paint(); }, hooks: function (h) { hooks = h; } };
+  // One source of truth for signed in / signed out (user 2026-11-01): the site's session, read with /api/me. A change
+  // made on one page tells the other tabs (BroadcastChannel, or localStorage where there is none) and the program's
+  // window around this page; they ask /api/me again, repaint the top right and (the console) stop sharing when signed
+  // out. Pages also ask again when they come back into view, and when the capacity-check socket closes.
+  var known, asking = false, askedAt = 0, bc = null;
+  try { bc = new BroadcastChannel("pc-auth"); } catch (e) {}
+  function idOf(p) { return p && p.user_id ? String(p.user_id) : ""; }
+  function tell() {
+    try { if (bc) bc.postMessage("changed"); } catch (e) {}
+    try { localStorage.setItem("pc-auth", String(Date.now())); } catch (e) {}
+    try { if (window.parent !== window) window.parent.postMessage("pc-auth-changed", "*"); } catch (e) {}   // no data in it
+  }
+  function recheck(force) {
+    if (asking || (!force && Date.now() - askedAt < 3000)) return;
+    asking = true; askedAt = Date.now();
+    fetch("/api/me", { credentials: "same-origin", cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : r.status === 401 || r.status === 403 ? null : undefined; })
+      .catch(function () { return undefined; })                          // no answer (offline): keep what we have
+      .then(function (p) {
+        asking = false;
+        if (p === undefined || idOf(p) === known) return;
+        known = idOf(p);
+        if (hooks && hooks.refresh) hooks.refresh(p); else window.pcAccount.set(p);
+        try { window.dispatchEvent(new CustomEvent("pc-auth", { detail: p })); } catch (e) {}
+      });
+  }
+  if (bc) bc.onmessage = function () { recheck(true); };
+  addEventListener("storage", function (e) { if (e.key === "pc-auth") recheck(true); });
+  addEventListener("message", function (e) {
+    if ((e.data === "pc-auth-changed" || e.data === "pc-signed-in") && (e.source === window.parent || e.origin === location.origin)) recheck(true);
+  });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") recheck(false); });
+  addEventListener("focus", function () { recheck(false); });
+  window.pcAuthRecheck = recheck;
+  window.pcAccount = { set: function (p) {
+    me = p && (p.user_id || email(p)) ? p : null; paint();
+    var id = idOf(me); if (known !== undefined && id !== known) tell(); known = id;   // signed in or out here: tell the rest
+  }, hooks: function (h) { hooks = h; } };
   window.pcAccountStart = function (end) {
     room(end);
     if (window.top !== window) return;               // inside the program's window or another page: that page has the account
@@ -6927,7 +6990,7 @@ ${WORKPACK_SRC}
       else if (m.type === "audit_result") { if (lease && lease.id === m.id) lease = null; committed = null; auditResult = m; auditResult.at = Date.now(); }
       if (m.type === "verdict") { verdict = m; verdict.at = Date.now(); verifyResult(!!m.pass); showVerdict(m); updateRates(); }
     };
-    ws.onclose = function () { police.ws = null; };
+    ws.onclose = function () { police.ws = null; if (me && window.pcAuthRecheck) window.pcAuthRecheck(true); };   // signed out elsewhere: stop
   }
   var REASONS = { "wrong CPU result": "the processor's answers did not match", "wrong GPU result": "the graphics card's answers did not match",
     "missing CPU chunks": "the processor did not return every result", "missing GPU results": "the graphics card did not return every result",
@@ -7607,7 +7670,8 @@ ${WORKPACK_SRC}
   var acctHooks = {
     signin: function () { openAuth(); }, signup: function () { openAuth(); }, account: function () { openAuth(); },
     settings: function () { openAuth(); if (me) setTimeout(function () { var x = location.hash === "#sessions" ? $("sessBox") : $("emailList"); if (x) x.scrollIntoView({ block: "center", behavior: "smooth" }); }, 120); },
-    signout: function () { $("signOut").onclick(); }
+    signout: function () { $("signOut").onclick(); },
+    refresh: function (p) { var was = me; setMe(p); if (was && !p) closeAuth(); }   // signed in or out in another tab or the program
   };
   if (window.pcAccount) window.pcAccount.hooks(acctHooks);
   api("/api/me").then(function (r) {
@@ -12158,11 +12222,12 @@ const viewsCfg = (env) => ({ active: String(env.MEDIA_VIEWS_COUNT_ACTIVE ?? "1")
   max_age_days: Math.max(0, parseInt(env.MEDIA_VIEWS_MAX_AGE_DAYS || "0", 10) || 0), sample: Math.max(1, parseInt(env.MEDIA_VIEWS_SAMPLE || "1", 10) || 1) });
 // Publish one link's folder. x = {tok, uid, name, at, bytes, fileId? (the original in planetcompute-ai), variants? {f, p, pt}
 // (ArrayBuffers, WebP), meta? (from the program)}. Returns true when the page is there.
+const POOL_MAKER = "a PlanetCompute contributor";
 // The pool rows of a cloud page's information panel (the seed is not shown: user 2026-10-31)
 function myPoolDetails(made) {
   if (!made || made.via !== "pool") return null;
-  const by = "SherpaHub " + (made.made_hub || "PlanetCompute") + (made.made_volunteer ? ", a volunteer computer" : made.made_device ? ", computer " + made.made_device : "")
-    + (made.made_cores ? ", " + made.made_cores + " core" + (made.made_cores === 1 ? "" : "s") : "");
+  // user 2026-11-01: the maker is always shown as "a PlanetCompute contributor" (no computer name or device ID)
+  const by = POOL_MAKER;
   const sec = Number(made.seconds) || 0, took = !sec ? "" : sec < 90 ? Math.round(sec) + " seconds" : sec < 5400 ? Math.round(sec / 60) + " minutes" : (Math.round(sec / 360) / 10) + " hours";
   return { made_by: by, how: (made.mode || "WholeMode") + (made.mode === "WholeMode" || !made.mode ? " (not split)" : "") + " · " + (made.queue || "BatchMode") + " queue",
     ...(Number(made.steps) ? { steps: Number(made.steps) } : {}), ...(took ? { time_to_make: took } : {}) };

@@ -115,6 +115,8 @@ pub struct Engine {
     lease: Mutex<Option<Arc<Lease>>>,
     audit: Mutex<Option<Value>>, // the last audit result from the site
     jobs: AtomicU32,             // grid jobs running now: the WorkPack threads wait, so llama.cpp has the processor
+    /// This program is signed in (user 2026-11-01: signing out halts sharing at once; signing in again resumes it).
+    signed_in: AtomicBool,
 }
 
 /// See Engine::pack_begin; `done` records the work (core time) for the console's CPU figure.
@@ -184,6 +186,7 @@ impl Engine {
             lease: Mutex::new(None),
             audit: Mutex::new(None),
             jobs: AtomicU32::new(0),
+            signed_in: AtomicBool::new(false),
         });
         e.save();
         e
@@ -200,7 +203,15 @@ impl Engine {
     }
 
     fn running(&self) -> bool {
-        self.settings.lock().unwrap().running
+        self.settings.lock().unwrap().running && self.signed_in.load(SeqCst)
+    }
+
+    /// The sign-in changed (server.rs set_session): sharing stops at once when signed out, and starts again (if it
+    /// was switched on) when signed in.
+    pub(crate) fn set_signed_in(self: &Arc<Self>, on: bool) {
+        if self.signed_in.swap(on, SeqCst) != on {
+            self.apply();
+        }
     }
 
     /// (Re)start the worker threads for the current settings, or stop them.
@@ -208,7 +219,7 @@ impl Engine {
         let gen = self.gen.fetch_add(1, SeqCst) + 1;
         let s = self.settings.lock().unwrap().clone();
         crate::image::set_threads(s.cores as usize); // pictures use the cores shared here too, not the whole machine
-        if !s.running {
+        if !s.running || !self.signed_in.load(SeqCst) {
             return;
         }
         self.session.lock().unwrap().get_or_insert_with(|| random_hex(16));
@@ -300,7 +311,7 @@ impl Engine {
         let (cpu, rate) = self.usage();
         let n = self.n.load(SeqCst) as f64;
         json!({
-            "engine": "native", "agreed": s.agreed, "cores": s.cores, "cap": s.cap, "running": s.running,
+            "engine": "native", "agreed": s.agreed, "cores": s.cores, "cap": s.cap, "running": s.running, "signed_in": self.signed_in.load(SeqCst),
             "hw_cores": hw_cores(), "state": self.state(), "cpu_pct": cpu, "samples_per_s": rate,
             "packs": self.packs.load(SeqCst), "wu": n / self.samples_per_wu(),
             "pi": if n > 0.0 { 4.0 * self.hits.load(SeqCst) as f64 / n } else { 0.0 },
@@ -464,11 +475,17 @@ async fn hb_config(st: &Local, token: &str) -> HbCfg {
 
 /// Keep the capacity-check socket open while contributing, signed in, and the site has the check switched on.
 async fn police_loop(st: Arc<Local>, e: Arc<Engine>) {
+    let mut last_ask: Option<Instant> = None;
     loop {
         let token = st.session.lock().unwrap().clone();
         let on = e.ratings.lock().unwrap().as_ref().is_some_and(|r| r["police"].as_bool() == Some(true));
         if let (Some(token), true, true) = (token, on, e.running()) {
             let _ = police_once(&st, &e, &token).await;
+            // the site closes this socket when the sign-in ends (signed out on the website or another device): ask it
+            if last_ask.is_none_or(|t: Instant| t.elapsed() > Duration::from_secs(60)) {
+                last_ask = Some(Instant::now());
+                crate::server::check_signed_in(&st, &token).await;
+            }
         }
         tokio::time::sleep(Duration::from_secs(10)).await;
     }
@@ -626,6 +643,36 @@ fn answer_cpu(seeds: &[u32], n: u32, k: usize) -> Vec<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // docs/TESTING.md test 106 (user 2026-11-01): sharing runs only while signed in; signing out halts it at once and
+    // signing in again resumes it (when it was switched on)
+    #[test]
+    fn sharing_only_while_signed_in() {
+        let args: Vec<String> = ["--contribute", "--cores", "1"].iter().map(|x| x.to_string()).collect();
+        let e = Engine::new(&args);
+        e.apply();
+        std::thread::sleep(Duration::from_millis(800));
+        assert!(!e.running() && e.packs.load(SeqCst) == 0, "signed out: nothing is computed");
+        e.set_signed_in(true);
+        let t = Instant::now();
+        while e.packs.load(SeqCst) == 0 && t.elapsed() < Duration::from_secs(30) {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert!(e.running() && e.packs.load(SeqCst) > 0, "signed in: it computes");
+        e.set_signed_in(false);
+        assert!(!e.running(), "signed out: stopped at once");
+        std::thread::sleep(Duration::from_secs(3)); // a pack already started may finish
+        let p1 = e.packs.load(SeqCst);
+        std::thread::sleep(Duration::from_secs(3));
+        assert_eq!(e.packs.load(SeqCst), p1, "signed out: no more packs");
+        assert_eq!(e.status()["signed_in"].as_bool(), Some(false));
+        e.set_signed_in(true);
+        let t = Instant::now();
+        while e.packs.load(SeqCst) == p1 && t.elapsed() < Duration::from_secs(30) {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert!(e.packs.load(SeqCst) > p1, "signed in again: it resumes");
+        e.set_signed_in(false);
+    }
     // Values from worker.js cpuChunkHits (the server's own check), computed in Node.
     #[test]
     fn matches_the_server() {

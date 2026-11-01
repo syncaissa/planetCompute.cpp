@@ -1121,10 +1121,31 @@ on the home page. Source code, scripts, tests and the paper: <a href="https://gi
     x.onclick = close; wrap.addEventListener("click", function (e) { if (e.target === wrap) close(); }); document.addEventListener("keydown", onKey);
     wrap.appendChild(box); document.body.appendChild(wrap); x.focus();
   }
-  function signedIn(p) { $('who').textContent = p.primary_email || p.user_id; show('me'); paintAccount(p);
-    call(BASE + 'api/me/broadcasts').then(function (d) { pcShowBroadcasts(d && d.rows); }).catch(function () {}); }
-  async function refresh() {
-    try { signedIn(await call(BASE + 'api/me')); } catch { show('signin'); }
+  // One source of truth for signed in / out (user 2026-11-01): this program's sign-in, which the website's pages in
+  // this window (the Share Compute console and the others, on the site port) use too. A change here tells those pages
+  // (they ask /api/me again: the console stops sharing when signed out); a change made in one of them tells this page.
+  let authId;
+  function tellFrames(skip) { for (const f of document.querySelectorAll('iframe')) { if (f.contentWindow && f.contentWindow !== skip) try { f.contentWindow.postMessage('pc-auth-changed', '*'); } catch (e) {} } }
+  function authIs(id, from) { if (authId !== undefined && id !== authId) tellFrames(from); authId = id; }
+  let authAskedAt = 0;
+  function authRecheck(force) { if (!force && Date.now() - authAskedAt < 3000) return; authAskedAt = Date.now(); refresh(); }
+  window.addEventListener('message', (e) => {
+    if (e.data !== 'pc-auth-changed' && e.data !== 'pc-signed-in') return;
+    if (![...document.querySelectorAll('iframe')].some((f) => f.contentWindow === e.source)) return;   // only our own frames
+    refresh(e.source);
+  });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') authRecheck(false); });
+  window.addEventListener('focus', () => authRecheck(false));
+  function signedIn(p, from) {
+    const id = String(p.user_id || ''), same = id === authId;
+    $('who').textContent = p.primary_email || p.user_id; if (!same) show('me'); paintAccount(p); authIs(id, from);
+    if (!same) call(BASE + 'api/me/broadcasts').then(function (d) { pcShowBroadcasts(d && d.rows); }).catch(function () {}); }
+  async function refresh(from) {
+    let p;
+    try { p = await call(BASE + 'api/me'); }
+    // signed out: the sign-in form (not again while a code is being typed); no answer (offline): keep what is shown
+    catch (x) { if (/401|403|sign/i.test(x.message)) { if (authId !== '') show('signin'); authIs('', from); } else if (authId === undefined) show('signin'); return; }
+    signedIn(p, from);
   }
   $('signin').onsubmit = async (e) => {
     e.preventDefault();
@@ -1149,7 +1170,7 @@ on the home page. Source code, scripts, tests and the paper: <a href="https://gi
     catch (x) { $('err').textContent = x.message; }
   };
   $('back').onclick = () => show('signin');
-  $('signout').onclick = async () => { try { await call(BASE + 'api/auth/signout', {}); } catch {} show('signin'); };
+  $('signout').onclick = async () => { try { await call(BASE + 'api/auth/signout', {}); } catch {} show('signin'); authIs(''); };
   // Top: Contribute Compute | Harness Compute | My Content (= Harness, Local Content) | Local Tunnel URL (= Harness,
   // Connect a Browser). The lit button follows the tab that is open.
   function paintNav() {

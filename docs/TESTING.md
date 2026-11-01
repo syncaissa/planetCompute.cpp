@@ -1992,6 +1992,12 @@ before this change keep the old wording (the registry keeps the first row).
 4 cores, WholeMode, BatchMode, 8 steps, 1260 s; saved; ⓘ Generated on the pool; Made by; How, Steps, "21 minutes"; no
 seed or prompt in the page or meta.json; meta.json fields; the page's note; a picture from the user's own computer keeps
 its wording with no pool rows. On the code before the change 6 of 9 fail.
+Changed 2026-11-01 (user: "yes, show \"a PlanetCompute contributor\" instead"): Made by is always "a PlanetCompute
+contributor" (no computer name, device ID or server name) on the page, in meta.json and in the program's list of pool
+pictures (GET /api/pool/media used the computer's name). Checks 4 and 7 now ask for that text (and no device ID or
+server name in the page or meta.json); check 11 reads the /api/pool/media line. Result: 11/11; the code before this
+change fails 3 (4, 7, 11). The one cloud page already shared with the old text (8bCDoy9YtA) was rewritten in place
+(index.html and meta.json) and its Cloudflare copy purged; it now says "a PlanetCompute contributor".
 
 ## 94. Pool pictures: the prompt off the command line; WorkPacks wait while a picture is made (2026-10-31)
 
@@ -2236,6 +2242,36 @@ Result (2026-11-01): test_versions 19/19; the tstobs1 program printed "This plan
 obsolete: download the new version at https://planetcompute.ai/download" and ended with code 3; the tstold1 program
 printed "There is a new version 01de581 available, please download it at https://planetcompute.ai/download" and kept
 running; Rust 28/28. The live table holds one active row per OS (01de581, the published builds).
+
+## 106. Signing out halts Share Compute at once; one source of truth for signed in / out (2026-11-01)
+
+User: "when I sign off - it should immediately halt the 'Share Compute' ... This for both website and exe. Sign in and
+Sign off needs to refer to one source of truth. Also ... when I signed in the main page the sign in on top right still
+said sign in". Found: (1) the program's no-window engine kept computing its own packs while signed out (only the socket
+to the site stopped), so the numbers kept going up; (2) on the website a sign-out stopped sharing only in the tab where
+it was pressed, and other tabs (and the console inside the program's window) kept their old state and their old top
+right; (3) the program's window never heard about a sign-in or sign-out made in one of the website pages inside it.
+Built: the one source of truth is the site's session (/api/me), which the program's window and its website pages share
+(the program passes its own sign-in to them).
+- Site: the capacity-check socket remembers the sign-in that opened it; /api/auth/signout and "Sign out everywhere
+  else" close that sign-in's sockets on every device of the account at once (code 4401, closeSessionSockets).
+- Pages (the account script on every page): a sign-in or sign-out tells the other tabs (BroadcastChannel, else
+  localStorage) and the program's window around the page; they ask /api/me again, repaint the top right, and the
+  console stops sharing when signed out. Pages also ask when they come back into view (at most every 3 s) and when the
+  capacity-check socket closes. No polling.
+- Program window: a sign-in or sign-out here tells its website pages; a change in one of them updates the header and
+  tells the others; it asks again when the window comes into view. A check never interrupts a code being typed.
+- Program, no window: the sharing threads run only while signed in (signing in again resumes them if sharing was on);
+  when the site closes the socket it asks /api/me and signs out only on a clear 401.
+Steps: (1) `node scripts/test_signout_halts.mjs website/worker.js client/ui/index.html` (21 checks: the real
+CapacityPolice with fake sockets and a fake DynamoDB; the real account script in a small fake browser with three pages,
+one inside the program's window; text checks of the program). (2) RunPod CPU pod: `cargo test --release
+--no-default-features --features llama` (new test contribute::sharing_only_while_signed_in: signed out nothing is
+computed; signed in it computes; signed out it stops and no more packs come; signed in again it resumes).
+(3) Re-run 103, 93, 104, 105 and the capacity-check test.
+Result (2026-11-01): test_signout_halts 21/21 (on the code before this change 13 fail); test_signin_reset 8/8,
+test_pool_madeby 11/11, test_police_slow 4/4, test_otp_hold 10/10, test_broadcasts 19/19, test_versions 19/19;
+Rust (RunPod CPU pod, server build): 29/29 with the new test; pod deleted.
 
 ## Our runs
 
