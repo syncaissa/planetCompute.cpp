@@ -2177,10 +2177,26 @@ Result (2026-11-01): 10/10 (requests 1-10 not held; the 11th starts the hold; 12
 with the exact wording and the start time; no code during the hold; still held after 23 h; codes again after 24 h;
 another address not affected). Regression: test_signin_turnstile 10/10, test_auth_codes 6/7 (check 7 as before).
 
+## 103. A successful sign-in resets the sign-in counters (2026-11-01)
+
+Testing (about 30 sign-ins in an hour) was refused with "Too many sign-in attempts from your network". Now a
+successful sign-in (`/api/auth/verify`) resets that address's daily code counter (test 102) and that IP's and network's
+sign-in counters in the rate limiter (`authReset`, ContactGuard kind "auth-reset"). The per-address limits stay (30 s
+between codes, 5 an hour, 15 wrong codes lock the day, the 24-hour hold after 10 requests without a sign-in). The
+operator can clear every network's counters with `POST /api/ops/auth-reset` signed with HB_SERVER_SECRET over
+"pc-ops|auth-reset|<unix minute>" (current or previous minute only); the site-wide counters are kept.
+Steps: `node scripts/test_signin_reset.mjs website/worker.js` (the site's real rate limiter on fake storage, fake
+DynamoDB and email). Result (2026-11-01): 8/8 (a network over 10 codes in 10 minutes is refused; after a successful
+sign-in it can ask again; 30 sign-ins in a row all succeed with no hold email; without a sign-in the 11th request still
+holds the address; the operator clear refuses a wrong signature and clears with the right one). The same test on the
+code before this change: 5 of these fail, as expected. Live (site cdf96d02): the signed clear answered ok, a wrong
+signature got 403.
+
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-01 16:10 | 103 sign-in resets the counters; signed operator clear | site cdf96d02 | 8/8; live clear ok |
 | 2026-11-01 15:55 | 102 10 code requests a day per address, then a 24-hour hold with one email | site (this commit) | 10/10 |
 | 2026-11-01 15:35 | 101 Turnstile on sign-in code requests; code email names who asked | site e9590176 | 10/10; live: browser request without the check refused, no code sent |
 | 2026-11-01 15:15 | 100 batched monthly balance seal | site (this commit) | 13/13 at 25,000 accounts; 13/13 at 200,000 (20 batches, ~1.2 s each) |

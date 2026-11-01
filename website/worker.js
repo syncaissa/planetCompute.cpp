@@ -3746,6 +3746,16 @@ async function handleApi(request, env, url) {
   }
   const path = url.pathname;
   try {
+    // The operator clears every network's sign-in counters (e.g. after testing locked a network out). Signed with
+    // HB_SERVER_SECRET over "pc-ops|auth-reset|<unix minute>", accepted for the current or the previous minute only.
+    if (path === "/api/ops/auth-reset" && request.method === "POST") {
+      if (!env.HB_SERVER_SECRET) return json({ error: "Not configured." }, 503);
+      const m = Math.floor(now() / 60), sig = request.headers.get("x-pc-ops") || "";
+      const good = [await hmacHexKey(env.HB_SERVER_SECRET, `pc-ops|auth-reset|${m}`), await hmacHexKey(env.HB_SERVER_SECRET, `pc-ops|auth-reset|${m - 1}`)];
+      if (!good.some((g) => sameHex(sig, g))) return json({ error: "Not allowed." }, 403);
+      await authReset(env, request, true);
+      return json({ ok: true, cleared: "sign-in counters of every network" });
+    }
     if (path === "/api/auth/start" && request.method === "POST") {
       const email = normEmail(body.email);
       if (!email) return json({ error: "Enter a valid email address." }, 400);
@@ -3784,6 +3794,9 @@ async function handleApi(request, env, url) {
         UpdateExpression: "SET last_login_at = :t", ExpressionAttributeValues: M({ ":t": iso() }) });
       const token = await createSession(env, userId, "", SESSION_TTL_S, request);
       await signInAlert(env, request, userId, created).catch((e) => console.log("sign-in alert", e && e.message));
+      // signed in: this address's daily code counter and this network's sign-in counters start again (user 2026-11-01)
+      await ddb(env, "DeleteItem", { TableName: tableName(env), Key: M({ pk: `OTPREQ#${email}`, sk: "OTPREQ" }) }).catch(() => {});
+      await authReset(env, request).catch((e) => console.log("auth reset", e && e.message));
       return json(await profile(env, userId), 200, { "set-cookie": sessionCookie(token, SESSION_TTL_S) });
     }
     if (path === "/api/auth/signout" && request.method === "POST") {
@@ -13478,6 +13491,15 @@ const AUTH_LIMITS = { start: [[600, 10], [86400, 40]], verify: [[600, 20], [8640
 // site-wide counter is now only a ceiling against a flood.
 const AUTH_GLOBAL = { start: [[600, 60000]], verify: [[600, 120000]], save: [[600, 6000]], register: [[600, 20000]], newacct: [[3600, 500]],
   addemail: [[600, 3000]] };
+// A successful sign-in resets this IP's and network's sign-in counters (user 2026-11-01: testing, 30 sign-ins in an hour
+// were refused as "too many sign-in attempts from your network"). Proving the code shows the person owns an address, so
+// their network starts again; the per-address limits (5 codes an hour, the daily hold, wrong-code locks) are unchanged.
+async function authReset(env, request, all) {
+  if (!env.CONTACT) return;
+  const ip = request.headers.get("cf-connecting-ip") || "none";
+  await env.CONTACT.get(env.CONTACT.idFromName("auth")).fetch("https://contact.internal/take", { method: "POST",
+    body: JSON.stringify({ kind: "auth-reset", all: !!all, keys: ["ip:" + ip, "net:" + contactNetKey(ip)] }) });
+}
 async function authLimit(env, request, what, ipOnly, extraKeys) {
   if (!env.CONTACT) return null;
   const ip = request.headers.get("cf-connecting-ip") || "none";
@@ -13503,6 +13525,13 @@ export class ContactGuard {
   constructor(state) { this.state = state; }
   async fetch(request) {
     const b = await request.json(), t = Date.now() / 1000;
+    if (b.kind === "auth-reset") {                        // a successful sign-in (or the operator): forget sign-in counters
+      const whats = ["start", "verify"];
+      if (b.all) {                                         // operator: every network's counters (never the site-wide ":all" ones)
+        for (const w of whats) for (const k of (await this.state.storage.list({ prefix: "k:" + w + ":" })).keys()) if (!k.endsWith(":all")) await this.state.storage.delete(k);
+      } else for (const w of whats) for (const k of b.keys || []) await this.state.storage.delete("k:" + w + ":" + k);
+      return Response.json({ ok: true });
+    }
     if (b.kind === "auth") {                              // sign-in: no form nonce; own limits per IP / network and overall
       const keys = [...b.keys.map((k) => b.what + ":" + k), b.what + ":all"], lists = {};
       for (const k of keys) lists[k] = ((await this.state.storage.get("k:" + k)) || []).filter((x) => t - x < 86400);
