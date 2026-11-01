@@ -395,7 +395,7 @@ state saved before answering, overdue copies handed out again) loses no job, pac
 nothing twice. Why there is no load balancer or queue service: [RELIABILITY.md](RELIABILITY.md).
 
 How it runs: the orchestrator simulator gridSim (Node.js, no network, no accounts). It is in the project
-folder `gridSim/` and not yet in this repository; it will be published with the orchestrator. It runs the
+folder `gridSim/`, published in this repository as `simulations/gridSim/` (see thisIsTheProofForMillionDeviceSim.txt). It runs the
 real orchestrator logic (`gridSim/core`) against simulated devices and Harness users.
 
 Steps:

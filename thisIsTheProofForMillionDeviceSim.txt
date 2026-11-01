@@ -1,0 +1,148 @@
+THE MILLION-DEVICE SIMULATION: WHAT WE DID, AND WHERE THE PROOF IS
+=====================================================================
+Repository: https://github.com/syncaissa/planetCompute.cpp   (all paths below are relative to its top folder)
+Paper: paper/dist/planetcompute.pdf, Section 8 "Orchestration at a Million Devices" (and the abstract).
+Written 2026-11-01. Every number below was checked against the files named next to it.
+
+
+1. WHAT THE PAPER CLAIMS
+------------------------
+In one simulated hour, about a million volunteer devices (1,151,633 came and went, 917,629 online on average) and
+10,000 consumers sending jobs at half of capacity: 253,881 of 261,125 jobs finished within the hour and the rest were
+still running; none was refused or stalled; 186,057 cheating answers were caught and none was delivered
+uncorrected; the busiest of 42 lane directories peaked at 411 messages a second.
+At list prices the original design costs about $111.54 an hour and a low-cost design about $9.80 an hour.
+
+
+2. WHAT IT IS, AND WHAT IT IS NOT (say this first to a critic)
+---------------------------------------------------------------
+IT IS a discrete-event simulation of the ORCHESTRATOR: the code that connects consumers' jobs to volunteers' devices
+(lane shards, lane directories, a planner, an intake gateway and one coordinator per job; designed to run as
+Cloudflare Durable Objects).
+  - The simulator runs the orchestrator's own classes (simulations/gridSim/core/*.js). That code reads no clock and
+    touches no network or storage: it only calls ctx.send / ctx.device / ctx.timer / ctx.spawn / ctx.exit / ctx.rand,
+    so the simulator can drive exactly the code that would be deployed.
+  - It is seeded (seed 1 in every run) and uses only its own random numbers (no Math.random anywhere in core/ or
+    sim/), so the same options and seed give the same run.
+IT IS NOT
+  - a deployment: the orchestrator has not yet run on Cloudflare (paper: "designed and simulated, not yet deployed");
+  - a measurement of real devices: device speeds, sessions, cheating and network delays are MODELLED (log-normal
+    speeds and sessions with a 40-minute median, 2% cheaters giving 70% wrong answers, 0.2% that never answer,
+    ~3 devices per network address, 0.5 ms per message + 0.02 ms per batched item in an object, 2-10 ms between
+    objects, ~40 ms to a device);
+  - the AI work itself: no model runs in the simulation; each simulated device simply takes the time its class
+    (browser CPU, browser GPU, 12 GB or 24 GB desktop GPU) would take for a pack.
+The paper says all of this in Section 8 ("Method" and "What it does not show").
+
+
+3. THE CODE
+-----------
+simulations/gridSim/core/      the orchestrator:  shard.js (lane shard, ~1,000 devices' sockets, leases, capacity
+                               checks), job.js (job coordinator: pack sizing, quorum/audit, hedging), directory.js
+                               (lane directory), plan.js (planner), intake.js (gateway), sizing.js
+simulations/gridSim/sim/       the world around it: world.js (event queue, latency, object service-time model,
+                               devices, consumers, faults), config.js (every parameter), run.js (one scenario ->
+                               results/<name>.json), scenarios.sh (the 10^5 set), summary.js, costreport.js (prices)
+simulations/gridSim/README.md  how to run it, the model, and "Where the paper's numbers come from" (number -> file)
+simulations/gridSim/FAULTS_FOUND.md   first results and the seven faults the simulator found (2026-10-21)
+scripts/pod_gridsim.py         runs one simulation on a rented RunPod CPU pod (copies gridSim, runs, copies back)
+scripts/aws_gridsim.py         the same on a short-lived AWS EC2 machine that terminates itself
+
+
+4. HOW THE MILLION-DEVICE RUNS WERE MADE
+----------------------------------------
+A 1 M run needs ~3-12 GB of memory and 20-35 minutes. It does not fit on our 7.6 GB build machine (the first try was
+killed by the kernel at t~1800 s: results/pull-1M-dir25.oom-cloud9.log), so the runs used rented machines:
+
+ run            date (UTC)   machine                                  wall time   events       proof of the launch
+ -------------  -----------  ---------------------------------------  ----------  -----------  -------------------------------------
+ pull-1M        2026-10-21   (first runs, before the fixes)           see .log    see .log     results/pull-1M.log
+ pull-1M-dir25  2026-10-22   RunPod CPU pod, 8 vCPU, 30 GB, Node 22   2,102 s     371.7 M      results/launch-logs/pod_gridsim.log
+ cost-v1-1M     2026-10-26   RunPod CPU pod                           2,065 s     370.6 M      results/cost-v1-1M.log
+ cost-v2-1M     2026-10-26   RunPod CPU pod                           1,233 s     125.7 M      results/cost-v2-1M.log
+ cost-v2fix-1M  2026-10-26   AWS r7a.xlarge (31 GB), Node 22          1,166 s     131.9 M      results/launch-logs/aws_gridsim_v2fix.log
+
+Each .log prints progress every 300 simulated seconds (devices online, jobs, events, memory, wall time) and the full
+report at the end; each .json holds the complete report AND the exact settings used ("cfg").
+
+
+5. THE RUNS AND WHAT EACH ONE PROVES (all in simulations/gridSim/results/)
+--------------------------------------------------------------------------
+ before-15.7abc/pull-1M.json + .log   10^6, before the fixes: first row of the paper's orchestrator table
+                                      (916,831 online, idle-while-queued 0.26%, 0 stalled, p99 144 s / 417 s)
+ before-15.7abc/<scenario>-100000.json  10^5, one change at a time: the other rows of that table (pull, push, steal,
+                                      deploy with jitter, 30% lost, burst, 40 networks, 90% demand)
+ pull-1M-dir25.json + .log            10^6 WITH the fixes: the paper's headline run (Section 1 above).
+                                      Its settings show the fixes: admission limit maxWait 1800 -> 300 s, directories
+                                      sharded (shardsPerDir 50 -> 25), new devices audited at 30% (auditNew 0.3).
+ sleepers-100000.json (and before-15.7abc/sleepers-100000.json)   sleeper cheaters: 5,278 wrong accepted before;
+                                      after: 2,031 accepted, of which 1,947 corrected after delivery and 84 never;
+                                      2,049 fixed before delivery
+ burst-100000.json, load90-100000.json (and the before-15.7abc/ versions)   admission: burst stalls 23 -> 3, refused
+                                      2,815 -> 7,975; 90% demand 6,319 -> 4,633 stalled
+ faults-20k-r0 / r1 / r2 (.json + .log)   platform faults at 20,000 devices: nothing retried / retries without
+                                      message IDs / the simple design (4,360 / 6,167 / 6,426 jobs finished; 493 / 113
+                                      / 0 lost; the simple design credited all 1,051,195 units exactly once)
+ deploy-storm-100000.json, deploy-jitter-100000.json   reconnect peak 91,074/s without jitter, 3,157/s with 30 s
+ cost-v1-1M.json + .log               cost table, original design (same settings as pull-1M-dir25, plus cost
+                                      accounting, so job counts differ slightly)
+ cost-v2-1M.json + .log               cost table, low-cost design first run: 4 wrong answers delivered uncorrected,
+                                      680 packs accepted without enough matching answers (the fault the paper reports)
+ cost-v2fix-1M.json + .log            cost table, low-cost design with the fix: 0 and 0
+ costreport-1M.txt                    the four prices $195.70 / $111.54 / $9.82 / $9.80, with the command at its top
+ ../FAULTS_FOUND.md                   the seven faults (67% busy directory, 95% empty pulls, 2,500/s livelock, 11,600
+                                      model downloads an hour, a shard waiting forever, 2.1 M leases in a list, a
+                                      hello to a dead socket) and what fixed each
+
+The complete number -> file map for Section 8 is in simulations/gridSim/README.md ("Where the paper's numbers come
+from"). Note: average devices online is not stored as one number; it is the sum of lanes[].devices in a run's JSON.
+
+
+6. CHECK THE HEADLINE NUMBERS YOURSELF (seconds, no simulation needed)
+----------------------------------------------------------------------
+  cd simulations/gridSim
+  python3 -c "
+import json; d=json.load(open('results/pull-1M-dir25.json'))
+print('online on average', sum(l['devices'] for l in d['lanes']))
+print('jobs', d['jobs'])
+print('settings', d['cfg'])"
+  grep -n 'wrong\|caught\|busiest\|cost per hour' results/pull-1M-dir25.log
+  node sim/costreport.js cost-v1-1M:site cost-v1-1M:ws300 cost-v2-1M:ws300 cost-v2fix-1M:ws300   # the prices
+
+
+7. RE-RUN IT YOURSELF (Node.js 20 or later, nothing to install; a machine with 32 GB is comfortable)
+----------------------------------------------------------------------------------------------------
+  cd simulations/gridSim
+  # the headline run (and the original-design cost run): ~35 min
+  node --max-old-space-size=28000 sim/run.js --devices 1000000 --name my-pull-1M
+  # the low-cost design with the fix: ~20 min
+  node --max-old-space-size=28000 sim/run.js --devices 1000000 --perShard 10000 --pullBatch 256 --leaseSec 300 \
+       --noForce true --jobGroups 100 --coalesce true --coalesceMs 250 --ledgerEvery 3600 --hbSec 300 --name my-v2fix-1M
+  # the low-cost design's first run (before the fix; the code then also leased to untrusted devices):
+  node --max-old-space-size=28000 sim/run.js --devices 1000000 --perShard 10000 --pullBatch 256 --leaseSec 300 \
+       --jobGroups 100 --coalesce true --coalesceMs 250 --ledgerEvery 3600 --hbSec 300 --leaseUntrusted true --name my-v2-1M
+  # the 10^5 scenarios: bash sim/scenarios.sh        the platform-fault runs: docs/TESTING.md test 14
+Every other value is the default in sim/config.js; the settings each published run used are in its JSON ("cfg"), and
+any of them can be passed as --<name> <value>. (The defaults were extended after some runs; a new switch always
+defaults to the behaviour of the earlier runs, except where noted above.) We have not re-run the 1 M runs a second time
+to confirm byte-identical output; differences after code changes are why cost-v1-1M (cost accounting added) and
+pull-1M-dir25 (same settings) differ slightly, as the paper states.
+
+
+8. WHAT A CRITIC SHOULD STILL ASK (and our honest answer)
+----------------------------------------------------------
+ - "Is it real?"  It is the orchestrator's real logic in a simulated world, not a deployment. The next steps are the
+   paper's E9: the same classes as Durable Objects against up to 10^6 devices generated inside Cloudflare plus
+   5,000-20,000 real WebSockets, then real programs on varied machines, then a soft launch.
+ - "Are the device models right?"  They are assumptions (Section 2 above, all in sim/config.js); real speeds,
+   departures and cheating will differ. Cloudflare's real latency and prices were not measured; prices are list prices
+   in sim/config.js and must be checked.
+ - "Do the job counts add up?"  Almost: 261,125 submitted = 253,881 finished + 7,241 still running + 3 that appear
+   in no counter of the report (none refused, given up, cancelled or stalled). Most likely they arrived in the last
+   moment and were not yet placed; the report does not say, and 3 jobs do not change any result.
+ - "One run?"  Yes: each 1 M result is a single run with seed 1. The 10^5 scenarios explore one change at a time.
+ - "Sleepers at 10^6?"  The 1 M run had the 2% ordinary cheaters; sleeper cheaters were tested at 10^5, where 84 wrong
+   answers remained uncorrected at the end of the hour.
+ - "Is the low-cost design free?"  No: small jobs take a median of 226 s instead of 74 s, and in the CPU lane devices
+   sat idle while packs waited 33% of the time (original design under 0.3%). It suits batch work; that idle lane is
+   the next fault to fix.
