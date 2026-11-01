@@ -1,0 +1,18 @@
+Same request, two machines (Linux + RTX 4090 vs Windows + Tesla T4); made by scripts/compare_pictures.py
+
+Picture (model, seed)                      Pixels equal  Mean diff  Within 8    SSIM
+FLUX.1 schnell, cat (13)                           4.3%       4.07     81.8%   0.940
+FLUX.1 schnell, sign (14)                          1.4%       4.43     79.2%   0.956
+Stable Diffusion 1.5, lighthouse (1001)            9.6%       1.17     98.3%   0.987
+Stable Diffusion 1.5, apple (1002)                 5.8%       1.61     97.3%   0.992
+
+Different pictures, same model, one from each machine (contrast):
+  flux-city.png          vs win-gpu-flux-sign.png        SSIM 0.258
+  flux-lighthouse.png    vs win-gpu-flux-cat.png         SSIM 0.356
+  sd15-apple.png         vs win-gpu-sd15-lighthouse.png  SSIM 0.454
+  sd15-cat.png           vs win-gpu-sd15-apple.png       SSIM 0.237
+  sd15-cat.png           vs win-gpu-sd15-lighthouse.png  SSIM 0.211
+  sd15-city.png          vs win-gpu-sd15-apple.png       SSIM 0.214
+  sd15-city.png          vs win-gpu-sd15-lighthouse.png  SSIM 0.187
+  sd15-lighthouse.png    vs win-gpu-sd15-apple.png       SSIM 0.454
+  range 0.19-0.45

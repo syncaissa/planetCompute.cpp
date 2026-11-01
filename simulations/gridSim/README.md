@@ -85,6 +85,7 @@ not stored as one number: it is the sum of `lanes[].devices` in a run's JSON.
 
 | Paper | File |
 |---|---|
+| The seven faults the simulator found (67% busy directory, 95% empty pulls, 2,500/s livelock, 11,600 downloads an hour, ...) and the first results | `FAULTS_FOUND.md` (this folder, not in `results/`) |
 | Million devices with the fixes: 1,151,633 came and went, 917,629 online, 253,881 of 261,125 jobs finished, 186,057 cheating answers caught, 42 directories, busiest 411 messages/s | `pull-1M-dir25.json` / `.log` |
 | Orchestrator table, first row (10^6 before the fixes, 916,831 online) | `before-15.7abc/pull-1M.json` / `.log` |
 | Orchestrator table, 10^5 rows (pull, push, steal, deploy jitter, 30% lost, burst, 40 networks, 90% demand) | `before-15.7abc/<scenario>-100000.json`; all logged in `scenarios-100k.log` |

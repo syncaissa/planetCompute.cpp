@@ -2111,6 +2111,7 @@ step finishes. The Windows build now tries once more after a failure (the second
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-01 12:00 | Same request on two machines, recomputed from the saved pictures (`python3 scripts/compare_pictures.py`, needs numpy + Pillow) | pictures of 2026-10-22 in docs/results/ | pixels equal 4.3/1.4/9.6/5.8%, mean difference 4.07/4.43/1.17/1.61, within 8 levels 81.8/79.2/98.3/97.3%, SSIM 0.940/0.956/0.987/0.992; different pictures 0.19-0.45 (docs/results/compare_pictures.txt) |
 | 2026-11-01 10:25 | 98 security fixes | site dea135ea; program (this commit) | Rust 28/28, workpack ALL PASS; site tests as old code + new checks pass (grid 22/22, my 26/26, audit 23/23); deployed |
 | 2026-10-31 19:00 | 92 close message now 10 s (fallback 13 s) | program (this commit) | 92 9/9 with OK (10), countdown 8-7 after 2 s, hide after 10 s once |
 | 2026-10-31 18:09 | 95 split matmul job live (65536x4096x65536, tile 128) | site 44f9a1a5; program ef32a3d | DONE in 42 min 44 s: 262,144/262,144 units checked + final check passed, 4 devices, 0 failed, 0 strikes, 33 timeouts resent, ~13.7 GOP/s |
