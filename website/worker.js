@@ -67,6 +67,7 @@ function html(body, status = 200) {
 export default {
   // Cron Trigger (wrangler.toml [triggers]): hourly heartbeat-server check and the "no server running" email
   async scheduled(event, env, ctx) {
+    if (event && event.cron === SEAL_CRON) { ctx.waitUntil(sealCron(env || {}).catch((e) => console.log("seal cron", e && e.message))); return; }
     if (event && event.cron === "47 * * * *") { ctx.waitUntil(myCron(env || {}).catch((e) => console.log("my cron", e && e.message))); return; }   // my.planetcompute.ai views
     ctx.waitUntil(hbCron(env || {}).catch((e) => console.log("hb cron", e && e.message)));
   },
@@ -1964,7 +1965,7 @@ const legView = (l) => ({ coin_id: l.coin_id, name: l.name, symbol: l.symbol, pc
 // and Merkle proof are stored as their own item (EPOCH#<n>#<user_id>, LEAF), so the snapshot has no size limit.
 // Run from the admin page this reads every BALANCE item in one request, which suits up to roughly 20,000
 // accounts; beyond that the same steps run as a batch job (a Durable Object alarm or a script).
-async function sealEpoch(env, me) {
+async function sealEpoch(env, me, opts = {}) {
   if (!walletOn(env)) return json({ error: "Wallets are not configured on this server yet." }, 503);
   const rows = [];
   let start;
@@ -1974,6 +1975,8 @@ async function sealEpoch(env, me) {
     for (const it of r.Items || []) rows.push([it.user_id.S, it.balance_npcc ? it.balance_npcc.N : "0", it.available_uwu ? it.available_uwu.N : "0"]);
     start = r.LastEvaluatedKey;
   } while (start);
+  if (opts.max && rows.length > opts.max)   // the scheduled seal: too many accounts for one request (nothing written)
+    return json({ error: `${rows.length} accounts: more than one request can seal (${opts.max}); run the batch job`, accounts: rows.length }, 413);
   rows.sort((a, b) => (a[0] < b[0] ? -1 : 1));
   const leaves = await Promise.all(rows.map((x) => leafHash(x[0], x[1], x[2])));
   const { root, layers } = await merkle(leaves);
@@ -1996,6 +1999,27 @@ async function sealEpoch(env, me) {
     n: N(n), root: S_(root), signature: S_(res.signature), accounts: N(rows.length),
     memo: S_(memo), by: S_(me.user_id), at: S_(iso()) } });
   return json({ ok: true, epoch: n, root, accounts: rows.length, signature: res.signature, explorer: explorerTx(env, res.signature), memo });
+}
+
+// The monthly seal (user 2026-11-01): cron SEAL_CRON = 03:23 UTC on the 1st of each month, the same steps as the admin
+// button. Skipped while wallets are not configured. Not run above SEAL_CRON_MAX accounts (one request reads every
+// balance and writes every proof; a larger grid needs the batch job), and then, or when the seal fails, the admins get
+// an email. The epoch list (admin page) shows every seal.
+const SEAL_CRON = "23 3 1 * *", SEAL_CRON_MAX = 20000;
+async function sealCron(env) {
+  if (!walletOn(env)) { console.log("seal cron: wallets are not configured: skipped"); return { skipped: true }; }
+  const r = await sealEpoch(env, { user_id: "scheduled" }, { max: SEAL_CRON_MAX });
+  const d = await r.json().catch(() => ({}));
+  if (r.ok) { console.log("seal cron: epoch", d.epoch, "accounts", d.accounts, "signature", d.signature); return d; }
+  console.log("seal cron failed:", r.status, d.error);
+  const admins = adminEmailList(env);
+  if (admins.length) {
+    await sendEmail(env, { to: admins, subject: "[planetcompute.ai] The monthly balance seal did not run",
+      text: [`The scheduled seal of all balances on chain (${iso()}) did not run: ${d.error || "status " + r.status}.`, "",
+        "Nothing was written. Seal from the admin page when the cause is fixed: https://planetcompute.ai/admin"].join("\n") })
+      .catch((e) => console.log("seal cron email", e && e.message));
+  }
+  return d;
 }
 
 // --- machine ratings (effective-dated, audited; pk "RATING" in <prefix>howCreditAwarded) ---

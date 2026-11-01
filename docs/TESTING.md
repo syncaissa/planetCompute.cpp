@@ -2133,10 +2133,22 @@ added between stopping the engine and exiting (as on a slower computer) the old 
 quit left queue.json with only the waiting picture; fixed code 8 of 8 rounds, and with the pause the picture stays in
 queue.json. Rust tests 28/28.
 
+## 100. The monthly balance seal (2026-11-01)
+
+The website seals all balances on chain (an epoch: the Merkle root of every balance, written from the treasury, each
+account's proof stored) once a month: cron `23 3 1 * *` (03:23 UTC on the 1st), `sealCron` in `website/worker.js`, the
+same steps as the admin button. It is skipped while wallets are not configured, and it does not run above 20,000
+accounts (one request reads every balance and writes every proof): then, or when a seal fails, the admins get an email
+and nothing is written. Steps: `node scripts/test_seal_cron.mjs website/worker.js` (fake DynamoDB, email and Solana).
+Result (2026-11-01): 3/3 (wallets off: skipped; 20,001 accounts: balances read, nothing sent on chain, admins emailed;
+the hourly job does not seal). Live: the deploy lists the schedule `23 3 1 * *`; the first seal runs on 1 December 2026.
+Before it, no epoch had been sealed.
+
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-01 15:00 | 100 monthly balance seal | site 6bab9096 | 3/3; schedule 23 3 1 * * live |
 | 2026-11-01 14:00 | 99 picture survives a newer copy replacing the program | program (this commit), stand-in engine | old 7/8 rounds (one picture lost), fixed 8/8; Rust 28/28 |
 | 2026-11-01 12:00 | Same request on two machines, recomputed from the saved pictures (`python3 scripts/compare_pictures.py`, needs numpy + Pillow) | pictures of 2026-10-22 in docs/results/ | pixels equal 4.3/1.4/9.6/5.8%, mean difference 4.07/4.43/1.17/1.61, within 8 levels 81.8/79.2/98.3/97.3%, SSIM 0.940/0.956/0.987/0.992; different pictures 0.19-0.45 (docs/results/compare_pictures.txt) |
 | 2026-11-01 10:25 | 98 security fixes | site dea135ea; program (this commit) | Rust 28/28, workpack ALL PASS; site tests as old code + new checks pass (grid 22/22, my 26/26, audit 23/23); deployed |
