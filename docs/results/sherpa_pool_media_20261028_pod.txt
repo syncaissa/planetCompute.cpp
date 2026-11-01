@@ -1,0 +1,43 @@
+=== unit (sherpa)
+test sherpa_prompts::tests::a_device_that_reconnects_keeps_its_prompt_and_delivers_it ... ok
+test sherpa_prompts::tests::failures_retry_elsewhere_then_fail ... ok
+test sherpa_prompts::tests::device_leaving_gives_the_prompt_back_and_lonely_checks_end ... ok
+test sherpa_prompts::tests::every_prompt_once_and_checks_on_another_device ... ok
+test sherpa_prompts::tests::pictures_in_parts_and_compared ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+=== test_sherpa_jobs_e2e.sh
+PASS 0. start-up line: started as a SherpaHub (jobs from the tab)
+PASS 1. chat batch of 20 given to the running hub
+PASS 1. all 20 done with the right answers
+PASS 1. each answered by a prompt device (name kept)
+PASS 1. each prompt its own seed (seed + position)
+PASS 1. 5 checked on ANOTHER device, all AGREE
+PASS 1. the log has where each went and the end
+PASS 2. 3 pictures of ~3 MB arrived whole at the room (main and check copy)
+PASS 2. picture checks: AGREE (difference 0)
+PASS 3. matrix job DONE (every piece checked, final check)
+PASS 3. where the pieces went: 5 devices, 256 checked pieces
+PASS 4. a prompts batch and a matrix job side by side: both done
+PASS 5. a running matrix job cancelled at 1973 of 65536
+PASS 5. the hub goes on with the next job after a cancel
+13 passed, 0 failed
+PASS 6. 8 checks DIFFERENT, 8 AGREE
+PASS 6. every DIFFERENT involves the lying device, no AGREE does
+2 passed, 0 failed
+PASS 8. after the site dropped every connection mid-batch, all 6 prompts done
+PASS 8. no prompt was given out twice (the devices said what they were still making)
+2 passed, 0 failed
+PASS 7. after the hub was killed (kill -9) and started again, the batch finished: 40 of 40
+PASS 7. the restarted hub went on with what was left
+2 passed, 0 failed
+=== test_sherpa_e2e.sh
+PASS 1. job 1 DONE through the broker (about 1 s after the devices started): SherpaHub: job 8547b4108b022c2e DONE: every unit checked, and the whole product passed the final check (4096 units, 137.4 GOP; credited 4096 units; 6 
+PASS 1. program devices connected and computed
+PASS 1. JS (browser-code) devices computed units: {"lie":false,"tasks":0,"units":2870,"packs":93,"banned":0,"closes":[null,null,nu
+PASS 1. both liars banned (closed 4008): {"lie":true,"tasks":0,"units":82,"packs":6,"banned":2,"closes":[4008,4008]}
+PASS 1. hub logged the bans
+   job 1348299d27799aac killed at about 7869 of 16384 units
+PASS 2. restarted hub continues the same job: SherpaHub: continuing job 1348299d27799aac (7869 of 16384 units already done, epoch 2)
+PASS 2. it kept the units done before the kill (7869 of 16384)
+PASS 2. job 1348299d27799aac DONE after the restart: SherpaHub: job 1348299d27799aac DONE: every unit checked, and the whole product passed the final check (16384 units, 549.8 GOP; credited 8515 units; 0
+8 passed, 0 failed

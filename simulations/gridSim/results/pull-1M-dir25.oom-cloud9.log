@@ -1,0 +1,7 @@
+pull-1M-dir25: 1,151,633 volunteers (1,000,000 online on average), 10,000 consumers, 1 h, policy pull, load 0.5
+  t=300s  online 938551  jobs 8307  events 38.5M  queued 1.84M  heap 3.53 GB  wall 170s
+  t=600s  online 879317  jobs 8173  events 78.7M  queued 1.83M  heap 1.88 GB  wall 451s
+  t=900s  online 869812  jobs 8219  events 115.2M  queued 1.78M  heap 2.85 GB  wall 727s
+  t=1200s  online 880744  jobs 8169  events 148.9M  queued 1.80M  heap 2.53 GB  wall 1113s
+  t=1500s  online 896691  jobs 7953  events 180.1M  queued 1.77M  heap 2.72 GB  wall 1626s
+  t=1800s  online 911353  jobs 7740  events 209.5M  queued 1.76M  heap 3.04 GB  wall 2132s

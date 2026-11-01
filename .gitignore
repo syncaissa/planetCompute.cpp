@@ -1,0 +1,42 @@
+# Secrets never go to GitHub
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.secret
+.solana-devnet-keys.json
+mainnet_payout.json
+.ops/
+
+# Private notes (planning, coin, wallets, rates): never to GitHub
+PLAN_*.md
+LLAMACPP_BUILD_LESSONS_*.md
+*_private_brainstorm*
+*PrivateBrainstorm*
+wallet_addresses*
+ALL_SITES_ISSUE_*.txt
+
+# Build output (the paper's built PDF, HTML and Word files ARE kept: paper/dist/)
+target/
+client/gen/
+pkg/
+dist/
+!paper/dist/
+node_modules/
+.wrangler/
+__pycache__/
+*.pyc
+stable-diffusion.cpp/*.tar.xz
+
+# LaTeX build leftovers (only in paper/: simulation logs elsewhere are results and are kept)
+paper/build/
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.blg
+paper/*.bbl
+paper/*.toc
+paper/*.synctex.gz

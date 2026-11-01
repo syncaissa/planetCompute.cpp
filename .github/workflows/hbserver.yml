@@ -1,0 +1,54 @@
+# The heartbeat server (hbserver/, CostOfComputeCFetc.txt): a static Linux program (musl) for x86_64 and aarch64,
+# smoke-tested (health, a genuine pass accepted, a forged one refused, the journal), kept as artifacts
+# hbserver-linux-x86_64 / hbserver-linux-aarch64. scripts/startHeartBeatEtcServerOnAnyEC2TypeServer.py copies one to a
+# server.
+name: Heartbeat server
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["hbserver/**", ".github/workflows/hbserver.yml"]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-musl, name: hbserver-linux-x86_64 }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl, name: hbserver-linux-aarch64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq musl-tools > /dev/null
+          rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: hbserver }
+      - name: Build
+        working-directory: hbserver
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Smoke test (plain HTTP on a local port)
+        working-directory: hbserver
+        run: |
+          # (no 'cmd | grep -q': grep stops early, the writer then fails under pipefail; compare whole files instead)
+          B=target/${{ matrix.target }}/release/hbserver
+          file $B; $B --version
+          export HB_SERVER_SECRET=$(python3 -c "import secrets;print(secrets.token_urlsafe(48))") HB_LISTEN=127.0.0.1:18443 HB_DATA=$RUNNER_TEMP/hb HB_SITE=http://127.0.0.1:9
+          $B > $RUNNER_TEMP/hb.log 2>&1 & sleep 1
+          curl -sf http://127.0.0.1:18443/health > $RUNNER_TEMP/h.json; cat $RUNNER_TEMP/h.json; grep '"ok":true' $RUNNER_TEMP/h.json > /dev/null
+          TOK=$(python3 -c "import hmac,hashlib,os,time;u='a1a1a1a1a1a1';d='0123456789ab';t=str(int(time.time())+3600);print(f'{u}.{d}.{t}.'+hmac.new(os.environ['HB_SERVER_SECRET'].encode(),f'hb|{u}.{d}.{t}'.encode(),hashlib.sha256).hexdigest())")
+          BODY='{"device_id":"0123456789ab","session_id":"00112233445566aa","state":"running","wu":0.5}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "authorization: Bearer $TOK" --data "$BODY" http://127.0.0.1:18443/beat)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "authorization: Bearer ${TOK%?}0" --data "$BODY" http://127.0.0.1:18443/beat)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "authorization: Bearer $TOK" --data '{"device_id":"ffffffffffff"}' http://127.0.0.1:18443/beat)" = 403
+          curl -s -X OPTIONS -H "origin: https://planetcompute.ai" -D - -o /dev/null http://127.0.0.1:18443/beat > $RUNNER_TEMP/pre.txt; grep -i "access-control-allow-origin: https://planetcompute.ai" $RUNNER_TEMP/pre.txt > /dev/null
+          curl -sf http://127.0.0.1:18443/health > $RUNNER_TEMP/h.json; grep '"pending":1' $RUNNER_TEMP/h.json > /dev/null
+          grep '0123456789ab' $RUNNER_TEMP/hb/journal.jsonl > /dev/null
+          kill %1; sleep 1
+          $B > $RUNNER_TEMP/hb2.log 2>&1 & sleep 1
+          curl -sf http://127.0.0.1:18443/health > $RUNNER_TEMP/h.json; grep '"pending":1' $RUNNER_TEMP/h.json > /dev/null      # after a restart the beat is still there
+          kill %1; cat $RUNNER_TEMP/hb.log $RUNNER_TEMP/hb2.log
+          mkdir -p ../out && cp $B ../out/hbserver && sha256sum ../out/hbserver
+      - uses: actions/upload-artifact@v4
+        with: { name: "${{ matrix.name }}", path: out/hbserver }

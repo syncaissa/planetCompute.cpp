@@ -1,0 +1,16 @@
+{
+ "info": {
+  "gpu": "NVIDIA GeForce RTX 3090",
+  "mem_gb": 23.6,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.6"
+ },
+ "B3": {
+  "download_s": 389.26077938079834,
+  "bytes": 28420603092,
+  "load_s": 5.298431873321533,
+  "cpu_offload": true
+ },
+ "B1_chunk_49f_704x480_30steps_s": 21.995324850082397
+}

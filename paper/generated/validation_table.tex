@@ -1,0 +1,25 @@
+\begin{tabular}{llrrrr}
+\toprule
+\textbf{Adversary} & \textbf{Policy} & \textbf{Wrong accepted} & \textbf{Exec./unit} & \textbf{Cheaters banned} & \textbf{Honest banned} \\
+\midrule
+$f=0.05$, $c=1$ & No validation & 5.08\% & 1.00 & -- & -- \\
+ & Quorum $q{=}2$ & 0 & 2.01 & 100\% & 1 \\
+ & Quorum $q{=}3$ & 0 & 3.01 & 100\% & 1 \\
+ & Adaptive ($q{=}2$, spot $5\%$) & 0.10\% & 1.25 & 100\% & 0 \\
+\midrule
+$f=0.05$, $c=0.1$ & No validation & 0.61\% & 1.00 & -- & -- \\
+ & Quorum $q{=}2$ & 0 & 2.06 & 100\% & 1 \\
+ & Quorum $q{=}3$ & 0 & 3.09 & 100\% & 2 \\
+ & Adaptive ($q{=}2$, spot $5\%$) & 0.22\% & 1.28 & 67\% & 0 \\
+\midrule
+$f=0.20$, $c=1$ & No validation & 20.14\% & 1.00 & -- & -- \\
+ & Quorum $q{=}2$ & 0 & 2.03 & 100\% & 6 \\
+ & Quorum $q{=}3$ & 0 & 3.03 & 100\% & 5 \\
+ & Adaptive ($q{=}2$, spot $5\%$) & 0.08\% & 1.25 & 100\% & 0 \\
+\midrule
+$f=0.20$, $c=0.1$ & No validation & 2.09\% & 1.00 & -- & -- \\
+ & Quorum $q{=}2$ & 0 & 2.22 & 100\% & 2 \\
+ & Quorum $q{=}3$ & 0 & 3.30 & 100\% & 4 \\
+ & Adaptive ($q{=}2$, spot $5\%$) & 0.63\% & 1.36 & 66\% & 0 \\
+\bottomrule
+\end{tabular}

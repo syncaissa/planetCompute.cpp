@@ -1,0 +1,162 @@
+/* PlanetCompute paper: web look matching the LaTeX PDF. Every rule is scoped to .pc-paper
+   so the same sheet works as a standalone page and inside a Blogger post. */
+.pc-paper {
+  --pc-blue: #00008c;        /* blue!55!black: Key Insight frame */
+  --pc-tint: #f2f2ff;        /* blue!5!white: Key Insight body */
+  --pc-cite: #007300;        /* green!45!black: citations */
+  --pc-link: #0000b3;        /* blue!70!black: links and refs */
+  --pc-ink: #000;
+  --pc-paper-bg: #fff;
+  box-sizing: border-box;
+  max-width: calc(158mm + 2 * 26mm);
+  margin: 0 auto;
+  padding: 18mm 26mm 22mm;
+  background: var(--pc-paper-bg);
+  color: var(--pc-ink);
+  font-family: "CMU Serif", "Latin Modern Roman", "Computer Modern Serif", Georgia, "Times New Roman", serif;
+  font-size: 11pt;
+  line-height: 1.36;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  font-kerning: normal;
+}
+.pc-paper *, .pc-paper *::before, .pc-paper *::after { box-sizing: border-box; }
+.pc-paper p { margin: 0; text-indent: 1.55em; }
+.pc-paper p, .pc-paper li, .pc-paper td, .pc-paper th, .pc-paper caption, .pc-paper span,
+.pc-paper em, .pc-paper strong, .pc-paper h1, .pc-paper h2, .pc-paper h3 { color: var(--pc-ink); }
+.pc-paper img, .pc-paper svg { border: 0; box-shadow: none; }
+.pc-paper h1 + p, .pc-paper h2 + p, .pc-paper h3 + p, .pc-paper .pc-asset + p,
+.pc-paper table + p, .pc-paper div + p, .pc-paper ol + p, .pc-paper ul + p,
+.pc-paper header + p, .pc-paper p.pc-noindent { text-indent: 0; }
+.pc-paper a { color: var(--pc-link); text-decoration: none; }
+.pc-paper a:hover { text-decoration: underline; }
+.pc-paper .citation a, .pc-paper a[role="doc-biblioref"] { color: var(--pc-cite); }
+.pc-paper code, .pc-paper .pc-email {
+  font-family: "CMU Typewriter Text", "Latin Modern Mono", "Courier New", monospace;
+  font-size: 1em; background: none; padding: 0; color: inherit;
+}
+.pc-paper strong { font-weight: 700; }
+
+/* Running head, like the PDF page header. */
+.pc-paper .pc-runhead {
+  font-size: 9.5pt; border-bottom: 0.5pt solid #000; padding-bottom: 2pt; margin-bottom: 14mm;
+  text-align: left;
+}
+
+/* Title block. */
+.pc-paper .pc-title { text-align: center; margin-bottom: 8mm; }
+.pc-paper .pc-title p { text-indent: 0; text-align: center; }
+.pc-paper .pc-title .pc-h1 {
+  text-align: center;
+  font-size: 17.28pt; font-weight: 700; line-height: 1.25; margin: 0 0 10pt; letter-spacing: 0.01em;
+  border: 0; padding: 0; color: inherit; font-family: inherit;
+}
+.pc-paper .pc-subtitle { font-size: 12pt; margin: 0 0 14pt; }
+.pc-paper .pc-author { font-size: 12pt; }
+.pc-paper .pc-email { font-family: "CMU Typewriter Text", "Latin Modern Mono", monospace; }
+.pc-paper .pc-date { margin-top: 8pt; }
+
+/* Abstract and keywords. */
+.pc-paper .pcabstract { font-size: 10pt; margin: 6mm 9mm 0; }
+.pc-paper .pcabstracttitle p { font-weight: 700; text-align: center; text-indent: 0; margin-bottom: 4pt; }
+.pc-paper .pcabstract p { text-indent: 1.5em; }
+.pc-paper .pcabstract .pcabstracttitle + p { text-indent: 0; }
+.pc-paper .pckeywords { margin: 10pt 0 6mm; }
+.pc-paper .pckeywords p { text-indent: 0; }
+
+/* Headings with LaTeX-style numbers. */
+.pc-paper h1, .pc-paper h2, .pc-paper h3 {
+  font-family: inherit; color: inherit; font-weight: 700; text-align: left; border: 0; padding: 0;
+  page-break-after: avoid; break-after: avoid;
+}
+.pc-paper h1 { font-size: 14.4pt; margin: 22pt 0 10pt; }
+.pc-paper h2 { font-size: 12pt; margin: 16pt 0 7pt; }
+.pc-paper h3 { font-size: 11pt; margin: 12pt 0 5pt; }
+.pc-paper .header-section-number { display: inline-block; min-width: 1.7em; margin-right: 0.3em; }
+.pc-paper h2 .header-section-number { min-width: 2.2em; }
+.pc-paper h1.unnumbered, .pc-paper h2.unnumbered { }
+
+/* Lists. */
+.pc-paper ol, .pc-paper ul { margin: 4pt 0 6pt; padding-left: 2.2em; }
+.pc-paper li { margin: 2pt 0; }
+.pc-paper li p { text-indent: 0; }
+
+/* Key Insight box (tcolorbox). */
+.pc-paper .keyinsight {
+  border: 0.8pt solid var(--pc-blue); border-radius: 2mm; background: var(--pc-tint);
+  margin: 10pt 0 12pt; overflow: hidden; break-inside: avoid;
+}
+.pc-paper .keyinsight .ki-title {
+  background: var(--pc-blue); color: #fff; font-weight: 700; padding: 3pt 7pt 3pt 7pt;
+}
+.pc-paper .keyinsight .ki-title p { text-indent: 0; }
+.pc-paper .keyinsight .ki-body { padding: 6pt 7pt 7pt; }
+.pc-paper .keyinsight .ki-body p { text-indent: 0; }
+.pc-paper .keyinsight .ki-body p + p { text-indent: 1.55em; }
+
+/* Definitions, propositions, proofs. */
+.pc-paper .pcdef, .pc-paper .pcprop, .pc-paper .pcproof { margin: 8pt 0; }
+.pc-paper .pcdef p, .pc-paper .pcprop p, .pc-paper .pcproof p { text-indent: 0; }
+.pc-paper .pcprop { font-style: italic; }
+.pc-paper .pcprop strong { font-style: normal; }
+
+/* LaTeX-rendered equations, figures and algorithms. */
+.pc-paper .pc-asset { text-align: center; margin: 8pt 0; line-height: 0; overflow-x: auto; }
+.pc-paper .pc-asset svg { display: inline-block; max-width: 100%; height: auto; }
+.pc-paper math[display="block"] { margin: 6pt 0; }
+
+/* Tables: booktabs. */
+.pc-paper table {
+  border-collapse: collapse; margin: 6pt auto 12pt; font-size: 10pt; line-height: 1.25;
+  border: 0; text-align: left; width: auto; max-width: 100%;
+}
+.pc-paper table caption {
+  caption-side: top; font-size: 11pt; text-align: center; padding-bottom: 5pt; line-height: 1.3;
+}
+.pc-paper table > thead > tr:first-child > *,
+.pc-paper table > tbody:first-child > tr:first-child > *,
+.pc-paper table > colgroup + tbody > tr:first-child > *,
+.pc-paper table > caption + tbody > tr:first-child > * { border-top: 0.08em solid #000; }
+.pc-paper table > tbody:last-child > tr:last-child > * { border-bottom: 0.08em solid #000; }
+.pc-paper thead th, .pc-paper thead td {
+  border-bottom: 0.05em solid #000; font-weight: 700; vertical-align: bottom;
+}
+.pc-paper th, .pc-paper td { padding: 2pt 6pt; vertical-align: top; border: 0; background: none; }
+.pc-paper th:first-child, .pc-paper td:first-child { padding-left: 0; }
+.pc-paper th:last-child, .pc-paper td:last-child { padding-right: 0; }
+.pc-paper tbody tr { background: none; }
+.pc-paper td p, .pc-paper th p { text-indent: 0; text-align: inherit; }
+
+.pc-paper table:has(th:nth-child(8)) { font-size: 8pt; width: 100%; }
+.pc-paper table:has(th:nth-child(8)) th, .pc-paper table:has(th:nth-child(8)) td { padding: 2pt 2.5pt; }
+.pc-paper .pcrunin { margin-top: 8pt; }
+.pc-paper .pcrunin p { text-indent: 0; }
+.pc-paper .pcrunin + p { text-indent: 1.55em; }
+@media (max-width: 720px) { .pc-paper table { display: block; overflow-x: auto; } }
+
+/* References. */
+.pc-paper #refs { font-size: 11pt; }
+.pc-paper #refs .csl-entry { margin: 0 0 7pt; padding-left: 1.2em; text-indent: -1.2em; text-align: left; }
+
+/* Footer block. */
+.pc-paper .pc-footer { margin-top: 18mm; text-align: center; font-size: 10pt; }
+.pc-paper .pc-footer hr { width: 50%; border: 0; border-top: 0.4pt solid #000; margin: 0 auto 6pt; }
+.pc-paper .pc-footer p { text-indent: 0; text-align: center; }
+
+/* Narrow screens. */
+@media (max-width: 720px) {
+  .pc-paper { padding: 16px 16px 24px; font-size: 16px; }
+  .pc-paper .pc-h1 { font-size: 1.35em; }
+  .pc-paper .pcabstract { margin: 16px 0 0; }
+  .pc-paper .pc-runhead { margin-bottom: 20px; }
+}
+
+/* Inside Blogger the theme supplies the page; keep the paper as a white sheet. */
+.pc-paper.pc-blogger { padding: 12mm 8mm 16mm; max-width: 100%; }
+@media (max-width: 720px) { .pc-paper.pc-blogger { padding: 12px 4px 20px; } }
+
+/* Standalone page background. */
+html:has(> body > .pc-paper) { background: #f3f3f1; }
+body:has(> .pc-paper) { margin: 0; padding: 16px 0; }
+@media print { html:has(> body > .pc-paper) { background: #fff; } .pc-paper { padding: 0; } }

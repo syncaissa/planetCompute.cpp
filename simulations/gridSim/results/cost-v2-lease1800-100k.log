@@ -1,0 +1,38 @@
+cost-v2-lease1800-100k: 115,163 volunteers (100,000 online on average), 10,000 consumers, 1 h, policy pull, load 0.5
+  t=300s  online 94918  jobs 2482  events 1.5M  queued 0.21M  heap 0.51 GB  wall 7s
+  t=600s  online 88242  jobs 3581  events 3.4M  queued 0.21M  heap 1.47 GB  wall 16s
+  t=900s  online 87511  jobs 3808  events 5.1M  queued 0.20M  heap 1.16 GB  wall 25s
+  t=1200s  online 88385  jobs 4028  events 6.6M  queued 0.20M  heap 0.69 GB  wall 33s
+  t=1500s  online 89976  jobs 4003  events 8.0M  queued 0.20M  heap 1.43 GB  wall 40s
+  t=1800s  online 91442  jobs 3975  events 9.3M  queued 0.19M  heap 0.83 GB  wall 47s
+  t=2100s  online 92614  jobs 3690  events 10.6M  queued 0.19M  heap 1.56 GB  wall 54s
+  t=2400s  online 93368  jobs 3558  events 11.8M  queued 0.19M  heap 0.80 GB  wall 62s
+  t=2700s  online 94220  jobs 3375  events 13.0M  queued 0.19M  heap 1.51 GB  wall 68s
+  t=3000s  online 94760  jobs 3275  events 14.2M  queued 0.19M  heap 2.18 GB  wall 74s
+  t=3300s  online 95414  jobs 3250  events 15.3M  queued 0.19M  heap 1.28 GB  wall 82s
+  t=3600s  online 95479  jobs 3245  events 16.5M  queued 0.19M  heap 1.98 GB  wall 88s
+
+== cost-v2-lease1800-100k  (88 s wall, 16.5 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64527   75.5%    0.29%
+embed.webgpu       22988   77.8%    0.40%
+llm8b.gpu12         2510   81.6%    0.13%
+sdxl.gpu12          1213   69.5%    0.19%
+llm14b.gpu24         851   79.9%    0.05%
+jobs: 32487 submitted, 29235 finished, 0 cancelled (ttl), 230 stalled >600s, 3245 running at end, refused {"busy":94}, gave up 1
+time to finish (s)  small: n=8903 p50 184 p95 453 p99 680 | medium: n=17036 p50 392 p95 835 p99 1,298 | large: n=595 p50 1,167 p95 2,148 p99 2,637
+time to first result (s): p50 35 p95 72 p99 116
+checking: extra copies 35.6%, hedges 56, wrong accepted 0, cheats caught 33749, forced 101
+cheats: wrong delivered uncorrected 0 (accepted 0, fixed before delivery 0, corrected after 0); redone in job 0, after delivery 0; late copies 20, stopped 0 (0 work-s)
+devices: 7,269,944 packs, 368,640 checks, 0 downloads (0 GB), 1166 lane switches, 10517 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         556/s d:0:0            busy   28% d:0:0  (5 objects at end)
+  plan        0.6/s plan             busy    0% plan  (1 objects at end)
+  worker      877/s intake           busy    0%   (1 objects at end)
+  shard       285/s s:0:3            busy   18% s:0:3  (14 objects at end)
+  jgroup       96/s g:2              busy    5% g:2  (20 objects at end)
+DO messages per second by kind: shard.done 538, shard.verdict 466, job.want 378, job.res 368, dir.jobPending 350, shard.none 196, shard.packs 181, job.tick 109, shard.checked 102, shard.jobs 82, shard.hello 66, dir.dry 53
+reconnect peak 127/s at t=2535s; per second: ws in 743, DO requests 3,025, ledger writes 69
+credit locked in jobs older than 30 min (max): 6,372,079 work-seconds; dropped messages 12 {"res":9,"release":3}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $2.12 (workers 0.08, DO requests 1.65, DO duration 0.23, writes 0.15)
+v2 cost per hour (as billed; heartbeats every 300 s): $1.13 = workers 0.08, doRequests 0.63, webSockets 0.02, heartbeats 0.01, doDuration 0.23, dynamoWrites 0.15, doStorageRows 0.00  -> ~$822 per month 24x7; objects awake 40, billed requests 1,170/s

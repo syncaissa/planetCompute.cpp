@@ -1,0 +1,315 @@
+== pull-100000  (85 s wall, 40.5 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64185   69.1%    0.22%
+embed.webgpu       22845   69.5%    0.13%
+llm8b.gpu12         2336   71.0%    0.06%
+sdxl.gpu12          1329   57.4%    0.08%
+llm14b.gpu24         868   87.8%    0.11%
+jobs: 32109 submitted, 31271 finished, 0 cancelled (ttl), 1 stalled >600s, 838 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9335 p50 68 p95 117 p99 149 | medium: n=18286 p50 109 p95 156 p99 192 | large: n=995 p50 164 p95 327 p99 513
+time to first result (s): p50 7.1 p95 15 p99 30
+checking: extra copies 17.4%, hedges 38535, wrong accepted 0, cheats caught 19775, forced 0
+devices: 7,758,247 packs, 500,413 checks, 0 downloads (0 GB), 2083 lane switches, 14448 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         513/s d:0:0            busy   26% d:0:0  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      879/s intake           busy    0%   (1 objects at end)
+  shard        97/s s:0:67           busy    5% s:0:67  (106 objects at end)
+  job          63/s j:1              busy    3% j:1  (838 objects at end)
+DO messages per second by kind: shard.done 2107, shard.verdict 1226, job.res 1182, job.want 603, shard.jobs 540, shard.none 387, dir.jobPending 362, dir.dry 291, shard.packs 216, shard.checked 139, shard.drop 138, shard.flush 99
+reconnect peak 129/s at t=1770s; per second: ws in 2,349, DO requests 7,579, ledger writes 1,524
+credit locked in jobs older than 30 min (max): 0 work-seconds; dropped messages 11949 {"res":10822,"release":1127}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $13.49 (workers 0.08, DO requests 4.16, DO duration 5.83, writes 3.43)
+
+== push-100000  (83 s wall, 35.3 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64310   71.7%   26.74%
+embed.webgpu       22873   70.3%   28.39%
+llm8b.gpu12         2330   73.0%   17.84%
+sdxl.gpu12          1234   67.7%   26.96%
+llm14b.gpu24         899   67.1%   32.91%
+jobs: 32317 submitted, 30176 finished, 0 cancelled (ttl), 4466 stalled >600s, 2140 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9212 p50 92 p95 774 p99 857 | medium: n=17397 p50 220 p95 868 p99 997 | large: n=886 p50 831 p95 1,127 p99 1,660
+time to first result (s): p50 7.4 p95 15 p99 25
+checking: extra copies 23.8%, hedges 173993, wrong accepted 0, cheats caught 20069, forced 0
+devices: 6,649,318 packs, 432,838 checks, 210 downloads (2 GB), 2409 lane switches, 13998 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir          16/s d:0:0            busy    1% d:0:0  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      879/s intake           busy    0%   (1 objects at end)
+  shard        97/s s:0:11           busy    5% s:0:12  (107 objects at end)
+  job          38/s j:1118           busy    2% j:1118  (2141 objects at end)
+DO messages per second by kind: shard.done 1799, shard.verdict 1631, job.res 1605, shard.packs 691, shard.drop 356, job.tick 298, shard.checked 120, shard.flush 99, shard.hello 67, shard.close 36, shard.tick 21, dir.sum 21
+reconnect peak 192/s at t=810s; per second: ws in 2,021, DO requests 6,773, ledger writes 1,520
+credit locked in jobs older than 30 min (max): 294,730 work-seconds; dropped messages 64469 {"res":64469}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $25.31 (workers 0.08, DO requests 3.71, DO duration 18.10, writes 3.42)
+
+== steal-100000  (86 s wall, 38.9 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64284   67.2%    0.01%
+embed.webgpu       22855   72.6%    0.11%
+llm8b.gpu12         2380   70.8%    0.82%
+sdxl.gpu12          1318   57.8%    0.67%
+llm14b.gpu24         830   82.2%    1.47%
+jobs: 32449 submitted, 31596 finished, 0 cancelled (ttl), 0 stalled >600s, 853 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9451 p50 68 p95 118 p99 151 | medium: n=18446 p50 108 p95 154 p99 192 | large: n=976 p50 162 p95 313 p99 534
+time to first result (s): p50 7.0 p95 14 p99 25
+checking: extra copies 17.4%, hedges 45587, wrong accepted 0, cheats caught 21278, forced 0
+devices: 7,815,236 packs, 449,765 checks, 0 downloads (0 GB), 2194 lane switches, 14404 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir          23/s d:0:1            busy    1% d:0:1  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      879/s intake           busy    0%   (1 objects at end)
+  shard        95/s s:1:22           busy    5% s:1:22  (108 objects at end)
+  job          47/s j:26057          busy    2% j:26057  (853 objects at end)
+DO messages per second by kind: shard.done 2128, shard.verdict 1826, job.res 1776, shard.packs 681, shard.drop 371, shard.checked 125, shard.flush 101, job.tick 86, shard.hello 67, shard.close 36, shard.tick 21, dir.sum 21
+reconnect peak 168/s at t=900s; per second: ws in 2,356, DO requests 7,300, ledger writes 1,537
+credit locked in jobs older than 30 min (max): 0 work-seconds; dropped messages 13534 {"res":13534}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $13.43 (workers 0.08, DO requests 4.01, DO duration 5.88, writes 3.46)
+
+file:///home/ubuntu/environment/planetCompute/gridSim/sim/world.js:82
+    if (!a && id.startsWith('s:')) a = this.add(id, new LaneShard(id, this.cfg), 'shard', false);
+                 ^
+
+TypeError: Cannot read properties of null (reading 'startsWith')
+    at World.actor (file:///home/ubuntu/environment/planetCompute/gridSim/sim/world.js:82:18)
+    at World.deliver (file:///home/ubuntu/environment/planetCompute/gridSim/sim/world.js:87:20)
+    at World.run (file:///home/ubuntu/environment/planetCompute/gridSim/sim/world.js:59:28)
+    at file:///home/ubuntu/environment/planetCompute/gridSim/sim/run.js:27:7
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.21.0
+
+== deploy-storm-100000  (91 s wall, 43.7 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           63961   72.5%    0.32%
+embed.webgpu       22790   72.4%    0.14%
+llm8b.gpu12         2413   75.2%    0.04%
+sdxl.gpu12          1264   62.1%    0.04%
+llm14b.gpu24         844   81.9%    0.03%
+jobs: 32320 submitted, 31438 finished, 0 cancelled (ttl), 0 stalled >600s, 882 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9372 p50 72 p95 121 p99 153 | medium: n=18430 p50 113 p95 160 p99 202 | large: n=981 p50 175 p95 339 p99 549
+time to first result (s): p50 7.1 p95 15 p99 31
+checking: extra copies 22.7%, hedges 37701, wrong accepted 0, cheats caught 19863, forced 0
+devices: 8,130,439 packs, 503,758 checks, 0 downloads (0 GB), 1471 lane switches, 14541 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         513/s d:0:0            busy   26% d:0:0  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker    9,149/s intake           busy    0%   (1 objects at end)
+  shard       107/s s:0:54           busy    6% s:0:54  (106 objects at end)
+  job          63/s j:1              busy    3% j:1  (882 objects at end)
+DO messages per second by kind: shard.done 2195, shard.verdict 1289, job.res 1250, job.want 692, shard.jobs 593, shard.none 442, dir.jobPending 426, dir.dry 321, shard.packs 250, shard.drop 146, shard.checked 139, shard.flush 99
+reconnect peak 91074/s at t=1800s; per second: ws in 2,463, DO requests 8,162, ledger writes 1,532
+credit locked in jobs older than 30 min (max): 0 work-seconds; dropped messages 11027 {"res":9904,"release":1123}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $14.09 (workers 0.11, DO requests 4.47, DO duration 6.07, writes 3.45)
+
+== outage-100000  (86 s wall, 40.0 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           61835   69.7%    0.55%
+embed.webgpu       21995   76.8%    0.16%
+llm8b.gpu12         2220   72.7%    0.08%
+sdxl.gpu12          1244   59.2%    0.04%
+llm14b.gpu24         790   72.4%    0.02%
+jobs: 32255 submitted, 31430 finished, 0 cancelled (ttl), 0 stalled >600s, 825 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9254 p50 69 p95 120 p99 151 | medium: n=18476 p50 109 p95 158 p99 192 | large: n=981 p50 171 p95 312 p99 464
+time to first result (s): p50 7.3 p95 16 p99 31
+checking: extra copies 17.6%, hedges 35845, wrong accepted 0, cheats caught 20148, forced 0
+devices: 7,690,927 packs, 480,793 checks, 219 downloads (2 GB), 1924 lane switches, 14528 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         518/s d:0:1            busy   26% d:0:1  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      879/s intake           busy    0%   (1 objects at end)
+  shard        96/s s:0:27           busy    5% s:0:27  (107 objects at end)
+  job          63/s j:1              busy    3% j:1  (825 objects at end)
+DO messages per second by kind: shard.done 2089, shard.verdict 1212, job.res 1168, job.want 585, shard.jobs 501, shard.none 368, dir.jobPending 354, dir.dry 271, shard.packs 217, shard.drop 135, shard.checked 133, shard.flush 100
+reconnect peak 205/s at t=2400s; per second: ws in 2,336, DO requests 7,440, ledger writes 1,476
+credit locked in jobs older than 30 min (max): 0 work-seconds; dropped messages 11376 {"res":10210,"release":1166}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $13.37 (workers 0.09, DO requests 4.08, DO duration 5.89, writes 3.32)
+
+== outage-silent-100000  (88 s wall, 40.3 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           62323   71.9%    0.57%
+embed.webgpu       22280   75.9%    0.19%
+llm8b.gpu12         2265   72.5%    0.06%
+sdxl.gpu12          1254   61.6%    0.04%
+llm14b.gpu24         797   67.6%    0.03%
+jobs: 32276 submitted, 31426 finished, 0 cancelled (ttl), 0 stalled >600s, 850 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9226 p50 69 p95 123 p99 190 | medium: n=18494 p50 109 p95 166 p99 249 | large: n=987 p50 171 p95 364 p99 498
+time to first result (s): p50 7.1 p95 16 p99 32
+checking: extra copies 17.5%, hedges 37343, wrong accepted 0, cheats caught 20296, forced 0
+devices: 7,767,098 packs, 481,148 checks, 219 downloads (2 GB), 2540 lane switches, 14511 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         518/s d:0:1            busy   26% d:0:1  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      879/s intake           busy    0%   (1 objects at end)
+  shard        96/s s:0:27           busy    5% s:0:27  (107 objects at end)
+  job          63/s j:1              busy    3% j:1  (851 objects at end)
+DO messages per second by kind: shard.done 2109, shard.verdict 1227, job.res 1182, job.want 590, shard.jobs 513, shard.none 374, dir.jobPending 355, dir.dry 277, shard.packs 216, shard.drop 137, shard.checked 133, shard.flush 100
+reconnect peak 178/s at t=2321s; per second: ws in 2,349, DO requests 7,516, ledger writes 1,490
+credit locked in jobs older than 30 min (max): 0 work-seconds; dropped messages 11903 {"res":10259,"release":1644}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $13.54 (workers 0.09, DO requests 4.12, DO duration 5.97, writes 3.35)
+
+== burst-100000  (89 s wall, 41.6 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64297   69.4%    0.41%
+embed.webgpu       22819   71.8%    0.16%
+llm8b.gpu12         2875   92.5%    0.03%
+sdxl.gpu12           587   81.8%    0.03%
+llm14b.gpu24         683   83.8%    0.02%
+jobs: 34106 submitted, 30458 finished, 0 cancelled (ttl), 23 stalled >600s, 2891 running at end, refused {"busy":2815}, gave up 607
+time to finish (s)  small: n=8923 p50 69 p95 118 p99 154 | medium: n=17836 p50 109 p95 155 p99 192 | large: n=980 p50 169 p95 336 p99 684
+time to first result (s): p50 7.2 p95 15 p99 32
+checking: extra copies 17.7%, hedges 37068, wrong accepted 0, cheats caught 19807, forced 0
+devices: 7,857,273 packs, 499,557 checks, 1770 downloads (7757 GB), 3412 lane switches, 14414 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         518/s d:0:1            busy   26% d:0:1  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      879/s intake           busy    0%   (1 objects at end)
+  shard        96/s s:0:27           busy    5% s:0:27  (108 objects at end)
+  job          63/s j:1              busy    3% j:1  (2891 objects at end)
+DO messages per second by kind: shard.done 2139, shard.verdict 1229, job.res 1186, job.want 592, shard.jobs 517, dir.jobPending 489, shard.none 375, dir.dry 280, job.tick 222, shard.packs 216, shard.checked 138, shard.drop 137
+reconnect peak 159/s at t=1260s; per second: ws in 2,380, DO requests 7,824, ledger writes 1,522
+credit locked in jobs older than 30 min (max): 100,193,829 work-seconds; dropped messages 11782 {"res":10704,"release":1078}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $21.52 (workers 0.08, DO requests 4.29, DO duration 13.72, writes 3.42)
+
+== burst-noadmit-100000  (94 s wall, 41.6 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64266   69.6%    0.40%
+embed.webgpu       22835   69.4%    0.23%
+llm8b.gpu12         2875   92.5%    0.03%
+sdxl.gpu12           593   81.9%    0.02%
+llm14b.gpu24         686   80.8%    0.02%
+jobs: 34317 submitted, 30691 finished, 0 cancelled (ttl), 16 stalled >600s, 3624 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9090 p50 69 p95 119 p99 154 | medium: n=17940 p50 109 p95 155 p99 186 | large: n=942 p50 164 p95 336 p99 607
+time to first result (s): p50 7.1 p95 15 p99 26
+checking: extra copies 17.8%, hedges 36920, wrong accepted 0, cheats caught 19587, forced 0
+devices: 7,810,082 packs, 499,237 checks, 1780 downloads (7807 GB), 3342 lane switches, 14391 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         518/s d:0:1            busy   26% d:0:1  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      879/s intake           busy    0%   (1 objects at end)
+  shard        96/s s:0:27           busy    5% s:0:27  (108 objects at end)
+  job          63/s j:1              busy    3% j:1  (3625 objects at end)
+DO messages per second by kind: shard.done 2125, shard.verdict 1222, job.res 1180, job.want 592, shard.jobs 520, dir.jobPending 509, shard.none 376, dir.dry 281, job.tick 243, shard.packs 216, shard.checked 138, shard.drop 137
+reconnect peak 160/s at t=1290s; per second: ws in 2,366, DO requests 7,842, ledger writes 1,521
+credit locked in jobs older than 30 min (max): 100,553,638 work-seconds; dropped messages 11880 {"res":10788,"release":1092}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $22.75 (workers 0.08, DO requests 4.30, DO duration 14.94, writes 3.42)
+
+== runpod-40nets-100000  (87 s wall, 40.2 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64225   67.1%    0.32%
+embed.webgpu       22871   69.5%    0.21%
+llm8b.gpu12         2383   73.8%    0.17%
+sdxl.gpu12          1308   60.9%    0.04%
+llm14b.gpu24         845   63.7%    0.16%
+jobs: 32233 submitted, 31436 finished, 0 cancelled (ttl), 0 stalled >600s, 796 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9310 p50 69 p95 119 p99 147 | medium: n=18415 p50 110 p95 158 p99 188 | large: n=952 p50 169 p95 314 p99 496
+time to first result (s): p50 7.2 p95 15 p99 26
+checking: extra copies 17.7%, hedges 37611, wrong accepted 0, cheats caught 20193, forced 0
+devices: 7,667,645 packs, 495,727 checks, 0 downloads (0 GB), 2211 lane switches, 14538 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         600/s d:0:1            busy   30% d:0:1  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      878/s intake           busy    0%   (1 objects at end)
+  shard       101/s s:0:11           busy    5% s:0:11  (106 objects at end)
+  job          63/s j:1              busy    3% j:1  (798 objects at end)
+DO messages per second by kind: shard.done 2088, shard.verdict 1215, job.res 1172, job.want 603, shard.jobs 537, shard.none 387, dir.jobPending 362, dir.dry 290, shard.packs 216, shard.drop 140, shard.checked 137, shard.flush 99
+reconnect peak 128/s at t=795s; per second: ws in 2,329, DO requests 7,534, ledger writes 1,525
+credit locked in jobs older than 30 min (max): 0 work-seconds; dropped messages 11804 {"res":10723,"release":1081}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $13.54 (workers 0.08, DO requests 4.13, DO duration 5.90, writes 3.43)
+
+== sleepers-100000  (88 s wall, 40.6 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64387   68.1%    0.19%
+embed.webgpu       22706   69.5%    0.10%
+llm8b.gpu12         2379   70.1%    0.19%
+sdxl.gpu12          1319   58.9%    0.10%
+llm14b.gpu24         839   80.8%    0.01%
+jobs: 32172 submitted, 31342 finished, 0 cancelled (ttl), 0 stalled >600s, 830 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9224 p50 69 p95 118 p99 148 | medium: n=18479 p50 109 p95 154 p99 188 | large: n=980 p50 164 p95 320 p99 528
+time to first result (s): p50 7.1 p95 15 p99 26
+checking: extra copies 17.2%, hedges 38041, wrong accepted 5278, cheats caught 18359, forced 0
+devices: 7,762,048 packs, 498,403 checks, 0 downloads (0 GB), 2443 lane switches, 13902 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         538/s d:0:1            busy   27% d:0:1  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      880/s intake           busy    0%   (1 objects at end)
+  job          55/s j:1293           busy    3% j:1293  (830 objects at end)
+  shard        98/s s:0:22           busy    5% s:0:22  (107 objects at end)
+DO messages per second by kind: shard.done 2113, shard.verdict 1233, job.res 1188, job.want 604, shard.jobs 537, shard.none 386, dir.jobPending 362, dir.dry 290, shard.packs 218, shard.drop 140, shard.checked 138, shard.flush 100
+reconnect peak 144/s at t=975s; per second: ws in 2,354, DO requests 7,597, ledger writes 1,527
+credit locked in jobs older than 30 min (max): 0 work-seconds; dropped messages 12209 {"res":11212,"release":997}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $13.52 (workers 0.08, DO requests 4.17, DO duration 5.84, writes 3.44)
+
+== nosplit-100000  (87 s wall, 40.4 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64184   69.0%    0.19%
+embed.webgpu       22851   71.0%    0.18%
+llm8b.gpu12         2314   68.6%    0.11%
+sdxl.gpu12          1370   58.9%    0.03%
+llm14b.gpu24         826   67.9%    0.02%
+jobs: 32358 submitted, 31543 finished, 0 cancelled (ttl), 0 stalled >600s, 815 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9371 p50 69 p95 117 p99 143 | medium: n=18475 p50 108 p95 154 p99 182 | large: n=978 p50 162 p95 327 p99 486
+time to first result (s): p50 7.2 p95 15 p99 24
+checking: extra copies 17.5%, hedges 37735, wrong accepted 0, cheats caught 19879, forced 0
+devices: 7,721,960 packs, 499,049 checks, 0 downloads (0 GB), 2432 lane switches, 14487 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         518/s d:0:1            busy   26% d:0:1  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      879/s intake           busy    0%   (1 objects at end)
+  shard        96/s s:0:27           busy    5% s:0:27  (107 objects at end)
+  job          63/s j:1              busy    3% j:1  (815 objects at end)
+DO messages per second by kind: shard.done 2100, shard.verdict 1224, job.res 1180, job.want 600, shard.jobs 534, shard.none 384, dir.jobPending 360, dir.dry 288, shard.packs 216, shard.drop 139, shard.checked 138, shard.flush 100
+reconnect peak 162/s at t=2925s; per second: ws in 2,341, DO requests 7,552, ledger writes 1,523
+credit locked in jobs older than 30 min (max): 0 work-seconds; dropped messages 12140 {"res":11032,"release":1108}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $13.48 (workers 0.08, DO requests 4.14, DO duration 5.83, writes 3.43)
+
+== norebalance-100000  (89 s wall, 40.8 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64195   69.0%    0.25%
+embed.webgpu       22870   72.2%    0.16%
+llm8b.gpu12         2419   68.4%    0.13%
+sdxl.gpu12          1228   72.8%    0.07%
+llm14b.gpu24         894   57.1%    0.03%
+jobs: 32437 submitted, 31608 finished, 0 cancelled (ttl), 0 stalled >600s, 829 running at end, refused {}, gave up 0
+time to finish (s)  small: n=9410 p50 69 p95 118 p99 143 | medium: n=18519 p50 108 p95 154 p99 182 | large: n=1004 p50 166 p95 306 p99 479
+time to first result (s): p50 7.2 p95 15 p99 25
+checking: extra copies 17.2%, hedges 38512, wrong accepted 0, cheats caught 20064, forced 0
+devices: 7,857,489 packs, 500,017 checks, 0 downloads (0 GB), 0 lane switches, 14569 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         552/s d:0:1            busy   28% d:0:1  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      878/s intake           busy    0%   (1 objects at end)
+  shard        98/s s:0:65           busy    5% s:0:65  (107 objects at end)
+  job          63/s j:1              busy    3% j:1  (829 objects at end)
+DO messages per second by kind: shard.done 2138, shard.verdict 1244, job.res 1198, job.want 602, shard.jobs 533, shard.none 384, dir.jobPending 361, dir.dry 288, shard.packs 217, shard.drop 139, shard.checked 139, shard.flush 99
+reconnect peak 68/s at t=734s; per second: ws in 2,379, DO requests 7,629, ledger writes 1,524
+credit locked in jobs older than 30 min (max): 0 work-seconds; dropped messages 12259 {"res":11145,"release":1114}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $13.53 (workers 0.08, DO requests 4.18, DO duration 5.83, writes 3.43)
+
+== load90-100000  (92 s wall, 34.9 M events)
+lane            devices   busy   idle-while-queued
+cpu.wasm           64364  100.0%    0.00%
+embed.webgpu       22951  100.0%    0.00%
+llm8b.gpu12         2531  100.0%    0.00%
+sdxl.gpu12          1105   98.8%    0.01%
+llm14b.gpu24         904  100.0%    0.00%
+jobs: 56851 submitted, 43982 finished, 0 cancelled (ttl), 6319 stalled >600s, 12869 running at end, refused {}, gave up 0
+time to finish (s)  small: n=13785 p50 348 p95 1,241 p99 1,869 | medium: n=24550 p50 528 p95 1,497 p99 2,115 | large: n=956 p50 1,006 p95 2,122 p99 2,623
+time to first result (s): p50 141 p95 733 p99 1,218
+checking: extra copies 21.8%, hedges 6381, wrong accepted 0, cheats caught 25793, forced 0
+devices: 7,588,475 packs, 501,467 checks, 0 downloads (0 GB), 1622 lane switches, 12964 kicked
+busiest objects (peak msgs/s, peak busy share):
+  dir         482/s d:1:0            busy   24% d:1:0  (6 objects at end)
+  plan        1.5/s plan             busy    0% plan  (1 objects at end)
+  worker      885/s intake           busy    0%   (1 objects at end)
+  shard        71/s s:0:18           busy    4% s:0:18  (107 objects at end)
+  job          32/s j:42             busy    2% j:42  (12869 objects at end)
+DO messages per second by kind: shard.done 2043, job.tick 937, dir.jobPending 907, shard.verdict 901, job.res 849, job.want 142, shard.checked 139, shard.packs 108, shard.flush 100, shard.hello 67, job.release 37, shard.close 36
+reconnect peak 74/s at t=852s; per second: ws in 2,284, DO requests 6,427, ledger writes 1,473
+credit locked in jobs older than 30 min (max): 18,029,438 work-seconds; dropped messages 771 {"res":667,"release":104}
+estimated Cloudflare+DynamoDB cost per hour (check prices): $62.01 (workers 0.09, DO requests 3.53, DO duration 55.08, writes 3.31)
+
+exit 0

@@ -1,0 +1,23 @@
+[package]
+name = "hbserver"
+version = "0.1.0"
+edition = "2021"
+description = "planetCompute heartbeat server: takes volunteers' heartbeats, hands them to planetcompute.ai in signed batches"
+license = "MIT"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+axum = "0.7"
+axum-server = { version = "0.7", features = ["tls-rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true

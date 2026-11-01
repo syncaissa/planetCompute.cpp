@@ -1,0 +1,231 @@
+# Builds the planetCompute client (Tauri 2 + Rust + llama.cpp, client/) as ONE program per platform:
+# planetCompute.exe (Windows), planetCompute (macOS, Linux). Adapted from sushila.cpp's engine.yml.
+# Builds stay as run artifacts; B2 keys never go to GitHub. Publish from Cloud9 with
+#   python3 scripts/publish_client.py <run id> <version>
+# Unsigned for now: Windows SmartScreen and macOS Gatekeeper will warn.
+# linux-x86_64-cuda is built on a many-core RunPod CPU pod (scripts/build_linux_cuda.sh), not here.
+# Budget (user, 2026-10-28: "build Windows and mac only on publish"): a push builds the three Linux builds only
+# (billed x1); all five (Windows x2, macOS x10) only when started by hand for a release:
+#   python3 -I scripts/ci_release_build.py [version]      (= workflow_dispatch with only=all; prints the run id)
+name: planetCompute client builds
+on:
+  push:
+    branches: [main]
+    paths: ["client/**", "models/catalog.json", ".github/workflows/client.yml", "website/workpack_kernel.mjs", "website/workpack_kernel.wat", "scripts/test_workpack_vectors.mjs", "scripts/build_workpack_wasm.mjs"]
+  workflow_dispatch:
+    inputs:
+      version: { description: "client version, e.g. 0.1.0", required: true, default: "0.1.0" }
+      # one platform only, to try a fix quickly (user, 2026-10-28: "yes add the macOS-only build"); a release is
+      # always published from a run of all five
+      only:
+        description: "build only this platform (all = the five)"
+        type: choice
+        default: all
+        options: [all, linux, macos-aarch64, windows-x86_64, linux-x86_64, linux-x86_64-server, linux-x86_64-vulkan]
+jobs:
+  # the workpack crate on its own (kernels, wire format, SherpaHub + fault simulator; docs/TESTING.md tests 63, 64):
+  # seconds, not the 40 minutes of a full build. Also the browser kernel against the same pinned vectors.
+  workpack:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: client/workpack }
+      - name: Crate tests (kernels, wire, SherpaHub fault simulator)
+        working-directory: client/workpack
+        run: cargo test --release -- --nocapture --test-threads=4 2>&1 | tee ../../workpack-tests.txt; test ${PIPESTATUS[0]} -eq 0
+        shell: bash
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: The embedded WebAssembly SIMD bytes are exactly website/workpack_kernel.wat
+        run: |
+          mkdir -p "$RUNNER_TEMP/wabt" && cd "$RUNNER_TEMP/wabt" && npm i -s wabt@1.0.36 > /dev/null
+          node "$GITHUB_WORKSPACE/scripts/build_workpack_wasm.mjs" "$GITHUB_WORKSPACE"
+          cd "$GITHUB_WORKSPACE" && git diff --exit-code website/workpack_kernel.mjs && echo "PASS: embedded bytes = the .wat source"
+      - name: Browser kernels (WASM SIMD + plain JS) against the pinned vectors
+        run: node scripts/test_workpack_vectors.mjs client/workpack/tests/vectors.txt
+      - name: The site's page carries exactly website/workpack_kernel.mjs + workpack_device.mjs (SherpaHub packs, test 66)
+        run: node scripts/embed_workpack.mjs --check website/worker.js
+  # which builds this run makes: all five, or the one asked for
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.pick.outputs.include }}
+    steps:
+      - id: pick
+        env:
+          ONLY: ${{ github.event_name == 'push' && 'linux' || inputs.only || 'all' }}   # push: Linux only
+          # portable programs: llama.cpp is never tuned to the CI machine's CPU (llama-cpp-2 leaves GGML_NATIVE off).
+          # macOS: Metal (llama.cpp's default on Apple). Servers (workhorses): no window, so no WebKitGTK / GTK needed
+          # on the machine; always headless. Windows: ONE program for every PC: Vulkan (AMD, Intel, NVIDIA GPUs; the
+          # loader comes with the graphics driver), delay-loaded, with the Khronos loader carried inside for PCs
+          # without one: no GPU = the processor (vkloader.rs). Linux Vulkan: AMD Radeon / Intel Arc and Iris GPUs (and
+          # NVIDIA without CUDA), runtime comes with the graphics driver.
+          ALL: >-
+            [{"os": "macos-15", "key": "macos-aarch64", "exe": "", "features": ""},
+             {"os": "ubuntu-22.04", "key": "linux-x86_64", "exe": "", "features": ""},
+             {"os": "ubuntu-22.04", "key": "linux-x86_64-server", "exe": "", "features": "", "server": true},
+             {"os": "windows-2022", "key": "windows-x86_64", "exe": ".exe", "features": "vulkan", "vulkan": true},
+             {"os": "ubuntu-22.04", "key": "linux-x86_64-vulkan", "exe": "", "features": "vulkan", "vulkan": true}]
+        run: |
+          python3 -c 'import json,os; a=json.loads(os.environ["ALL"]); o=os.environ["ONLY"]; p=[m for m in a if o in ("all", m["key"]) or (o == "linux" and m["key"].startswith("linux"))]; assert p, "no such build: " + o; print("include=" + json.dumps(p))' >> "$GITHUB_OUTPUT"
+  build:
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.include) }}
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ inputs.version || '0.1.0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # macOS: a cache made on the retired macos-14 image carried llama.cpp's CMake setup (OpenSSL paths) that do not
+      # exist on macos-15 (2026-10-31: cpp-httplib "openssl/err.h not found"): its own key, so it builds fresh once
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: client, key: "${{ matrix.key }}${{ matrix.os == 'macos-15' && '-macos15' || '' }}" }
+      - name: Linux libraries (WebKitGTK for the window; clang for llama.cpp's bindings)
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev cmake clang libclang-dev
+      - name: Vulkan SDK (Windows; the full LunarG installer, as llama.cpp releases do, with SPIRV-Headers)
+        if: ${{ matrix.vulkan && startsWith(matrix.os, 'windows') }}
+        shell: pwsh
+        run: |
+          $v = "1.4.357.0"
+          curl.exe -o $env:RUNNER_TEMP/VulkanSDK-Installer.exe -L "https://sdk.lunarg.com/sdk/download/$v/windows/vulkansdk-windows-X64-$v.exe"
+          & "$env:RUNNER_TEMP\VulkanSDK-Installer.exe" --accept-licenses --default-answer --confirm-command install
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$v"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$v\bin"
+          # the Vulkan loader carried inside planetCompute.exe (build.rs VULKAN_LOADER_DLL): the SDK's, else the one it installed
+          $dll = @("C:\VulkanSDK\$v\Bin\vulkan-1.dll", "C:\Windows\System32\vulkan-1.dll") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $dll) { throw "no vulkan-1.dll after the SDK install" }
+          (Get-Item $dll).VersionInfo | Format-List FileVersion, ProductName, LegalCopyright
+          Add-Content $env:GITHUB_ENV "VULKAN_LOADER_DLL=$dll"
+      - name: Vulkan SDK (Linux)
+        if: ${{ matrix.vulkan && !startsWith(matrix.os, 'windows') }}
+        uses: jakoch/install-vulkan-sdk-action@v1
+        with: { vulkan_version: "1.4.309.0", install_runtime: true, cache: true, stripdown: true }
+      - name: libclang for llama.cpp's bindings, and a short build folder (Windows)
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        shell: bash
+        run: |
+          echo "LIBCLANG_PATH=C:\\Program Files\\LLVM\\bin" >> "$GITHUB_ENV"
+          # llama.cpp's Vulkan shader sub-build nests deep under target/: MSVC fails past 260 characters (C1083)
+          echo "CARGO_TARGET_DIR=C:/t" >> "$GITHUB_ENV"
+      # The image engine: stable-diffusion.cpp's sd-cli at the pinned commit (stable-diffusion.cpp/PLANETCOMPUTE_SOURCE.txt),
+      # built for this platform (CPU; Metal on macOS; Vulkan for the -vulkan builds) and carried inside planetCompute.
+      # No OpenMP and (Windows) a static C runtime, so it needs nothing installed; never tuned to the CI machine's CPU.
+      - name: Image engine cache
+        id: sdcache
+        uses: actions/cache@v4
+        # the backend is in the key: windows-x86_64 was a processor-only build until 2026-10-26, its old cache must not be used
+        # and planetCompute's patch (scripts/patch_sd_cli.py): a changed patch builds the engine again
+        with: { path: sd-bin, key: "sd-a1ded76da581-${{ matrix.key }}-${{ matrix.vulkan && 'vulkan' || 'plain' }}-v3-${{ hashFiles('scripts/patch_sd_cli.py') }}" }
+      - name: Image engine (stable-diffusion.cpp sd-cli)
+        if: ${{ steps.sdcache.outputs.cache-hit != 'true' }}
+        shell: bash
+        run: |
+          SRC="${RUNNER_TEMP}/sd"; [ "${{ runner.os }}" = Windows ] && SRC="C:/sd"
+          git clone -q --branch master-945-a1ded76 --depth 1 --recurse-submodules --shallow-submodules https://github.com/leejet/stable-diffusion.cpp "$SRC"
+          [ "$(git -C "$SRC" rev-parse HEAD)" = a1ded76da5818803fca97a3b433669ef727d32cf ] || { echo "unexpected stable-diffusion.cpp commit"; exit 1; }
+          "$(command -v python3 || command -v python)" scripts/patch_sd_cli.py "$SRC"   # PC_CROP: 1920 x 1080 from 1920 x 1088
+          flags="-DCMAKE_BUILD_TYPE=Release -DSD_BUILD_EXAMPLES=ON -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DSD_SERVER_BUILD_FRONTEND=OFF"
+          [ "${{ runner.os }}" = macOS ] && flags="$flags -DSD_METAL=ON"
+          [ "${{ matrix.vulkan }}" = true ] && flags="$flags -DSD_VULKAN=ON"
+          [ "${{ runner.os }}" = Windows ] && flags="$flags -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
+          cmake -S "$SRC" -B "$SRC/b" $flags
+          cmake --build "$SRC/b" --config Release --target sd-cli -j 4
+          mkdir -p sd-bin
+          cp "$(find "$SRC/b" -type f \( -name sd-cli -o -name sd-cli.exe \) | head -1)" "sd-bin/sd-cli${{ matrix.exe }}"
+      - name: Image engine check
+        shell: bash
+        run: |
+          ls -la sd-bin
+          "sd-bin/sd-cli${{ matrix.exe }}" --help > sd-help.txt 2>&1 || true
+          head -5 sd-help.txt; grep -qi -- "--diffusion-model" sd-help.txt || { echo "sd-cli does not run"; exit 1; }
+          # a Vulkan build carries a Vulkan image engine (pictures on the GPU), never a processor-only one
+          if [ "${{ matrix.vulkan }}" = true ]; then grep -c ggml_vulkan "sd-bin/sd-cli${{ matrix.exe }}" > /dev/null || { echo "FAIL: the image engine has no Vulkan"; exit 1; }; echo "image engine: Vulkan inside"; fi
+          echo "SD_CLI=$GITHUB_WORKSPACE/sd-bin/sd-cli${{ matrix.exe }}" >> "$GITHUB_ENV"
+      - name: Build
+        shell: bash
+        working-directory: client
+        run: |
+          feat=""; [ -n "${{ matrix.features }}" ] && feat="--features ${{ matrix.features }}"
+          [ "${{ matrix.server }}" = true ] && feat="--no-default-features --features llama"
+          # macOS 15 runners have Homebrew's OpenSSL without its headers on the path, so llama.cpp's built-in web server
+          # (cpp-httplib, not used by planetCompute) failed to compile; linking Homebrew's OpenSSL would also tie the
+          # program to Homebrew. llama-cpp-sys-2 passes CMAKE_* to CMake: no OpenSSL = that server without HTTPS.
+          if [ "$RUNNER_OS" = "macOS" ]; then export CMAKE_DISABLE_FIND_PACKAGE_OpenSSL=ON; fi
+          cargo build --release --locked $feat   # drop --locked for the one push that adds a dependency, then commit the new Cargo.lock
+      - name: The server build needs no desktop libraries
+        if: ${{ matrix.server }}
+        shell: bash
+        working-directory: client
+        run: |
+          b="${CARGO_TARGET_DIR:-target}/release/planetCompute"; ldd "$b" | tee ldd.txt
+          if grep -Ei "webkit|gtk|javascriptcore|soup|appindicator" ldd.txt; then echo "FAIL: the server build links desktop libraries"; exit 1; fi
+          echo "PASS: no desktop libraries"
+      - name: Unit tests (WorkPack = the server's cpuChunkHits)
+        if: ${{ matrix.key == 'linux-x86_64' }}
+        working-directory: client
+        run: cargo test --release
+      - name: Smoke test (no window)
+        shell: bash
+        working-directory: client
+        run: '"${CARGO_TARGET_DIR:-target}/release/planetCompute${{ matrix.exe }}" --version'
+      - name: WorkPack kernel conformance on this platform (docs/TESTING.md test 63)
+        shell: bash
+        working-directory: client
+        run: |
+          # to a file, not a pipe: the Windows program (a window program that attaches to the console) loses piped
+          # output, as --sandbox-check in scripts/test_local_server.sh
+          rc=0; "${CARGO_TARGET_DIR:-target}/release/planetCompute${{ matrix.exe }}" --workpack-check > wp.txt 2>&1 || rc=$?
+          cat wp.txt; [ $rc = 0 ] || { echo "FAIL: --workpack-check exited $rc"; exit 1; }
+          # strip carriage returns: Windows output and a Windows checkout end lines with \r\n (same hashes, diff failed)
+          tr -d '\r' < wp.txt | grep '^VECTOR' | awk '{print $1, $2, $3, $4}' | sort > got.txt
+          tr -d '\r' < workpack/tests/vectors.txt | sort > want.txt
+          diff want.txt got.txt && echo "PASS: same hashes as the pinned vectors" || { echo "FAIL: this platform computes different results"; exit 1; }
+      - name: Local web server, takeover and native contributor (scripts/test_local_server.sh, as documented in docs/TESTING.md)
+        shell: bash
+        working-directory: client
+        env:
+          WITH_MODEL: ${{ (matrix.features == '' || matrix.key == 'windows-x86_64') && '1' || '0' }}   # Harness with a real model on the CPU/Metal builds and on Windows (the runner has no GPU: the no-GPU path)
+          WITH_IMAGE: ${{ matrix.features == '' && matrix.exe == '' && !matrix.server && '1' || '0' }}   # a real picture on Linux (CPU) and macOS (Metal)
+          WITH_VIDEO: ${{ matrix.key == 'linux-x86_64' && '1' || '0' }}   # a real (tiny) clip on Linux (CPU)
+        run: bash ../scripts/test_local_server.sh "${CARGO_TARGET_DIR:-target}/release/planetCompute${{ matrix.exe }}"
+      - name: Windows PC without any Vulkan loader (no graphics driver) - the carried loader is used, chat on the processor
+        if: ${{ matrix.key == 'windows-x86_64' }}
+        shell: bash
+        working-directory: client
+        run: |
+          # take away every vulkan-1.dll the program could find (this runner is thrown away after the job)
+          VS=$(cygpath -u "$VULKAN_SDK")
+          for f in /c/Windows/System32/vulkan-1.dll /c/Windows/SysWOW64/vulkan-1.dll "$VS"/Bin/vulkan-1.dll; do
+            if [ -f "$f" ]; then takeown //f "$(cygpath -w "$f")" > /dev/null; icacls "$(cygpath -w "$f")" //grant administrators:F > /dev/null; mv "$f" "$f.away"; echo "moved $f"; fi
+          done
+          export PATH=$(echo "$PATH" | tr ':' '\n' | grep -vi vulkansdk | paste -sd:)
+          AD=$(cygpath -u "$APPDATA"); SD=$(cygpath -u "$SD_CLI")
+          rm -f "$AD/planetCompute/bin/vulkan-1.dll"
+          exe="${CARGO_TARGET_DIR:-target}/release/planetCompute.exe"
+          "$exe" --version | tee v.txt
+          grep -q "carried loader is used" v.txt || { echo "FAIL: the carried Vulkan loader was not used"; exit 1; }
+          [ -f "$AD/planetCompute/bin/vulkan-1.dll" ] || { echo "FAIL: no carried loader in the data folder"; exit 1; }
+          # the image engine starts next to the carried loader (as the program runs it from <data>/bin)
+          d=$(mktemp -d); cp "$SD" "$d/"; cp "$AD/planetCompute/bin/vulkan-1.dll" "$d/"
+          "$d/$(basename "$SD")" --help > sdh.txt 2>&1 || true; grep -qi -- "--diffusion-model" sdh.txt || { echo "FAIL: the image engine does not start"; head sdh.txt; exit 1; }
+          echo "PASS: the image engine starts with the carried loader"
+          WITH_MODEL=1 bash ../scripts/test_local_server.sh "$exe"
+      - name: Package (the bare program; unsigned)
+        shell: bash
+        run: |
+          mkdir -p pkg
+          name="planetCompute-${VERSION}-${{ matrix.key }}${{ matrix.exe }}"
+          cp "${CARGO_TARGET_DIR:-client/target}/release/planetCompute${{ matrix.exe }}" "pkg/$name"
+          cp client/Cargo.lock pkg/Cargo.lock
+          echo "NAME=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with: { name: "${{ matrix.key }}", path: "pkg/*" }

@@ -1,0 +1,43 @@
+# STAGING copy of the website Worker: same worker.js, its own Durable Objects, and the TEST tables (pctest-ai-*,
+# made with `DYNAMODB_TABLE_PREFIX=pctest-ai- python3 CreateTables.py`). For tests only (heartbeat ledger, and
+# later the 1 M stress test). https://planetcompute-website-staging.webrtctv.workers.dev
+# Deploy: npx wrangler@3.99.0 deploy --config wrangler-staging.toml   (secrets: AWS_ACCESS_KEY_ID,
+# AWS_SECRET_ACCESS_KEY, SESSION_SECRET via `wrangler secret bulk`; no email sending on staging)
+name = "planetcompute-website-staging"
+main = "worker.js"
+compatibility_date = "2026-10-20"
+workers_dev = true
+
+[vars]
+DDB_PREFIX = "pctest-ai-"
+AWS_REGION = "us-east-1"
+MAIL_FROM = "staging-no-mail@invalid"
+# "Email us a question" on staging: nothing is mailed; Cloudflare's documented always-pass Turnstile test keys
+CONTACT_DRY_RUN = "1"
+ADMIN_EMAILS = "staging-admin@invalid"
+TURNSTILE_SITEKEY = "1x00000000000000000000AA"
+TURNSTILE_SECRET = "1x0000000000000000000000000000000AA"
+
+[[durable_objects.bindings]]
+name = "POLICE"
+class_name = "CapacityPolice"
+
+[[durable_objects.bindings]]
+name = "TUNNEL"
+class_name = "DeviceTunnel"
+
+[[migrations]]
+tag = "v1-capacity-police"
+new_sqlite_classes = ["CapacityPolice"]
+
+[[migrations]]
+tag = "v2-device-tunnel"
+new_sqlite_classes = ["DeviceTunnel"]
+
+[[durable_objects.bindings]]
+name = "CONTACT"
+class_name = "ContactGuard"
+
+[[migrations]]
+tag = "v3-contact-guard"
+new_sqlite_classes = ["ContactGuard"]

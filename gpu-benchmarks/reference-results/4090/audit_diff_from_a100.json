@@ -1,0 +1,179 @@
+{
+ "info": {
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "mem_gb": 23.5,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.9"
+ },
+ "rows": [
+  {
+   "trace": 0,
+   "k": 0,
+   "cross_gpu_step_rel_err": 0.00028766997274942696,
+   "trajectory_rel_diff": 0.00028766857576556504
+  },
+  {
+   "trace": 0,
+   "k": 5,
+   "cross_gpu_step_rel_err": 0.00023465653066523373,
+   "trajectory_rel_diff": 0.0007074904278852046
+  },
+  {
+   "trace": 0,
+   "k": 10,
+   "cross_gpu_step_rel_err": 0.00019317927944939584,
+   "trajectory_rel_diff": 0.0009031421504914761
+  },
+  {
+   "trace": 0,
+   "k": 15,
+   "cross_gpu_step_rel_err": 0.0001744829205563292,
+   "trajectory_rel_diff": 0.001065197866410017
+  },
+  {
+   "trace": 0,
+   "k": 20,
+   "cross_gpu_step_rel_err": 0.0001738357386784628,
+   "trajectory_rel_diff": 0.0013322304002940655
+  },
+  {
+   "trace": 0,
+   "k": 25,
+   "cross_gpu_step_rel_err": 0.0002472521155141294,
+   "trajectory_rel_diff": 0.002005208283662796
+  },
+  {
+   "trace": 0,
+   "k": 29,
+   "cross_gpu_step_rel_err": 0.00047495384933426976,
+   "trajectory_rel_diff": 0.004337851889431477
+  },
+  {
+   "trace": 1,
+   "k": 0,
+   "cross_gpu_step_rel_err": 0.00034134750603698194,
+   "trajectory_rel_diff": 0.0003413471858948469
+  },
+  {
+   "trace": 1,
+   "k": 5,
+   "cross_gpu_step_rel_err": 0.0002261051704408601,
+   "trajectory_rel_diff": 0.0008649317314848304
+  },
+  {
+   "trace": 1,
+   "k": 10,
+   "cross_gpu_step_rel_err": 0.0002174482069676742,
+   "trajectory_rel_diff": 0.0013045306550338864
+  },
+  {
+   "trace": 1,
+   "k": 15,
+   "cross_gpu_step_rel_err": 0.00018388147873338312,
+   "trajectory_rel_diff": 0.001661863992922008
+  },
+  {
+   "trace": 1,
+   "k": 20,
+   "cross_gpu_step_rel_err": 0.00019730496569536626,
+   "trajectory_rel_diff": 0.0021804673597216606
+  },
+  {
+   "trace": 1,
+   "k": 25,
+   "cross_gpu_step_rel_err": 0.00026244454784318805,
+   "trajectory_rel_diff": 0.0030641481280326843
+  },
+  {
+   "trace": 1,
+   "k": 29,
+   "cross_gpu_step_rel_err": 0.0005104845040477812,
+   "trajectory_rel_diff": 0.006958297453820705
+  },
+  {
+   "trace": 2,
+   "k": 0,
+   "cross_gpu_step_rel_err": 0.00029518635710701346,
+   "trajectory_rel_diff": 0.00029518496012315154
+  },
+  {
+   "trace": 2,
+   "k": 5,
+   "cross_gpu_step_rel_err": 0.0002687555970624089,
+   "trajectory_rel_diff": 0.000753239612095058
+  },
+  {
+   "trace": 2,
+   "k": 10,
+   "cross_gpu_step_rel_err": 0.0002579356078058481,
+   "trajectory_rel_diff": 0.0010383293265476823
+  },
+  {
+   "trace": 2,
+   "k": 15,
+   "cross_gpu_step_rel_err": 0.0001841390912886709,
+   "trajectory_rel_diff": 0.0015981809701770544
+  },
+  {
+   "trace": 2,
+   "k": 20,
+   "cross_gpu_step_rel_err": 0.00019415606220718473,
+   "trajectory_rel_diff": 0.0028531940188258886
+  },
+  {
+   "trace": 2,
+   "k": 25,
+   "cross_gpu_step_rel_err": 0.00025415903655812144,
+   "trajectory_rel_diff": 0.0060988678596913815
+  },
+  {
+   "trace": 2,
+   "k": 29,
+   "cross_gpu_step_rel_err": 0.00041630075429566205,
+   "trajectory_rel_diff": 0.018088480457663536
+  },
+  {
+   "trace": 3,
+   "k": 0,
+   "cross_gpu_step_rel_err": 0.00038263938040472567,
+   "trajectory_rel_diff": 0.0003826397005468607
+  },
+  {
+   "trace": 3,
+   "k": 5,
+   "cross_gpu_step_rel_err": 0.0002170591033063829,
+   "trajectory_rel_diff": 0.0008899787208065391
+  },
+  {
+   "trace": 3,
+   "k": 10,
+   "cross_gpu_step_rel_err": 0.00022856603027321398,
+   "trajectory_rel_diff": 0.00162151746917516
+  },
+  {
+   "trace": 3,
+   "k": 15,
+   "cross_gpu_step_rel_err": 0.00020822107035201043,
+   "trajectory_rel_diff": 0.0064514982514083385
+  },
+  {
+   "trace": 3,
+   "k": 20,
+   "cross_gpu_step_rel_err": 0.00021296110935509205,
+   "trajectory_rel_diff": 0.018710410222411156
+  },
+  {
+   "trace": 3,
+   "k": 25,
+   "cross_gpu_step_rel_err": 0.0002842704125214368,
+   "trajectory_rel_diff": 0.03720405697822571
+  },
+  {
+   "trace": 3,
+   "k": 29,
+   "cross_gpu_step_rel_err": 0.0004721214063465595,
+   "trajectory_rel_diff": 0.06704837828874588
+  }
+ ]
+}

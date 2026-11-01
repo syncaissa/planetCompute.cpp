@@ -1,0 +1,6 @@
+pull-1M: 1,151,633 volunteers (1,000,000 online on average), 10,000 consumers, 1 h, policy pull, load 0.5
+  t=300s  online 938639  jobs 8283  events 40.1M  queued 1.82M  heap 3.57 GB  wall 172s
+  t=600s  online 879491  jobs 8154  events 82.4M  queued 1.87M  heap 2.03 GB  wall 376s
+  t=900s  online 870417  jobs 8054  events 121.5M  queued 1.76M  heap 3.62 GB  wall 634s
+  t=1200s  online 880936  jobs 7929  events 156.2M  queued 1.75M  heap 2.36 GB  wall 1040s
+  t=1500s  online 896639  jobs 7877  events 189.1M  queued 1.77M  heap 2.81 GB  wall 1563s

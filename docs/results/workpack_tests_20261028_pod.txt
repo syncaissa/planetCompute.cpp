@@ -1,0 +1,72 @@
+    Finished `release` profile [optimized] target(s) in 0.00s
+     Running unittests src/lib.rs (target/release/deps/workpack-f37c920093df25cd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/kernels.rs (target/release/deps/kernels-d6b4ed5dd9d72968)
+
+running 5 tests
+VECTOR 1 1x1x1 df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119
+VECTOR 7 4x16x4 d2718867ae85d827861b82ae56c2ac17d52ac9a615b252117774e084b3ca11a0
+VECTOR 42 17x33x9 69fb31f19b8d44ac82c6729ddc3c54df950b52c9acd3c328f1bdf395a9226f3f
+test matmul_extremes_are_exact ... ok
+VECTOR 1234 64x64x64 4f146a10fd70ace3803b258a99cf6d9c8779eb521dc44051b2e8cbe097c43ff4
+test mc_pi_and_lease_seed_unchanged ... ok
+VECTOR 99 3x4096x5 1d8a1ec293420dfcebf6de4bc12b80e7ff8916cc83df6e91dc84458aa1657fa5
+VECTOR 2026 61x301x67 8430f40c57213fa247a738dc045f91c9a0407d582d4557d74c7a9a03cf89608a
+test conformance_vectors ... ok
+test freivalds_accepts_correct_and_catches_every_single_change ... ok
+test matmul_matches_naive_on_200_shapes ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/sim.rs (target/release/deps/sim-c8543fc19967d23d)
+
+running 11 tests
+SIM a-one        units     30 devices     1 makespan       3.2 s ideal      3.5 s ratio  0.91 | packs 6 hedges 0 timeouts 0 dup 0 refused 0 stale 0 needs 0 blocks 11 out 0.0 MB in 0.0 MB | struck 0 banned 0 liars 0 | 82 ms real
+SIM d-liars      units   1024 devices   200 makespan       2.2 s ideal      2.2 s ratio  0.98 | packs 342 hedges 85 timeouts 3 dup 41 refused 0 stale 0 needs 0 blocks 1302 out 1.4 MB in 1.1 MB | struck 8 banned 3 liars 8 | 127 ms real
+test d_liars_are_caught_banned_and_the_job_stays_exact ... ok
+SIM c-hedge      units   1024 devices   200 makespan       2.3 s ideal      2.2 s ratio  1.06 | packs 341 hedges 95 timeouts 8 dup 51 refused 0 stale 0 needs 0 blocks 1313 out 1.4 MB in 1.1 MB | struck 0 banned 0 liars 0 | 130 ms real
+SIM c-nohedge    units   1024 devices   200 makespan       2.5 s ideal      2.2 s ratio  1.14 | packs 300 hedges 0 timeouts 8 dup 22 refused 0 stale 0 needs 0 blocks 1239 out 1.4 MB in 1.1 MB | struck 0 banned 0 liars 0 | 134 ms real
+test c_stragglers_hedging_bounds_the_tail ... ok
+test deterministic_replay ... ok
+SIM e-dups       units   1024 devices   150 makespan       2.8 s ideal      2.3 s ratio  1.24 | packs 329 hedges 98 timeouts 2 dup 98 refused 0 stale 0 needs 0 blocks 1287 out 1.4 MB in 1.2 MB | struck 0 banned 0 liars 0 | 174 ms real
+test e_late_duplicates_are_credited_once ... ok
+SIM g-damage     units   1024 devices   150 makespan       4.7 s ideal      2.3 s ratio  2.10 | packs 377 hedges 133 timeouts 23 dup 59 refused 7 stale 12 needs 0 blocks 1352 out 1.5 MB in 1.2 MB | struck 0 banned 0 liars 0 | 272 ms real
+test g_damaged_messages_are_refused ... ok
+SIM h-cache      units    256 devices   100 makespan       1.7 s ideal      2.1 s ratio  0.80 | packs 259 hedges 3 timeouts 0 dup 3 refused 0 stale 0 needs 40 blocks 376 out 3.1 MB in 1.1 MB | struck 0 banned 0 liars 0 | 141 ms real
+test h_tiny_device_caches ... ok
+SIM f-crash      units   3072 devices   200 makespan       7.0 s ideal      2.6 s ratio  2.69 | packs 1507 hedges 23 timeouts 2 dup 1 refused 0 stale 551 needs 0 blocks 8760 out 9.6 MB in 8.1 MB | struck 0 banned 0 liars 0 | 532 ms real
+test f_hub_crashes_five_times ... ok
+SIM b-leave      units  16384 devices   300 makespan       7.2 s ideal      4.1 s ratio  1.77 | packs 3775 hedges 777 timeouts 52 dup 711 refused 0 stale 0 needs 0 blocks 17341 out 19.2 MB in 17.8 MB | struck 0 banned 0 liars 0 | 1389 ms real
+test b_devices_vanish_mid_pack ... ok
+SIM a-500        units  16384 devices   500 makespan       5.3 s ideal      3.2 s ratio  1.65 | packs 4829 hedges 3100 timeouts 67 dup 1013 refused 0 stale 0 needs 0 blocks 22202 out 24.4 MB in 18.2 MB | struck 0 banned 0 liars 0 | 1447 ms real
+test a_baseline_one_device_and_500 ... ok
+SIM j-effic      units  16384 devices   100 makespan       9.4 s ideal      8.6 s ratio  1.09 | packs 895 hedges 28 timeouts 12 dup 19 refused 0 stale 0 needs 0 blocks 10482 out 11.9 MB in 17.0 MB | struck 0 banned 0 liars 0 | 1311 ms real
+test j_efficiency_with_real_work_per_device ... ok
+SIM i-scale      units  65536 devices  2000 makespan       6.5 s ideal      3.2 s ratio  2.04 | packs 25719 hedges 11045 timeouts 224 dup 6956 refused 0 stale 0 needs 0 blocks 90964 out 53.7 MB in 76.0 MB | struck 0 banned 0 liars 0 | 5552 ms real
+test i_scale_65536_units_2000_devices ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.45s
+
+     Running tests/wire.rs (target/release/deps/wire-f24e2dc361dc4917)
+
+running 4 tests
+test every_truncation_and_extension_is_refused ... ok
+test lying_lengths_and_fields_are_refused ... ok
+test round_trip ... ok
+test random_bytes_never_panic ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests workpack
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+8
+Model name:                              AMD EPYC 9575F 64-Core Processor

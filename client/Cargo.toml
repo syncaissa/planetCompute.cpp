@@ -1,0 +1,66 @@
+[package]
+name = "planetcompute"
+version = "0.1.0"
+edition = "2021"
+description = "planetCompute: contribute compute, harness compute"
+
+# One program per platform: planetCompute.exe (Windows), planetCompute (macOS, Linux).
+[[bin]]
+name = "planetCompute"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"], optional = true }   # the window (feature "window"); tray-icon: src/tray.rs
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# PNG: a picture made a little larger by the engine (1920 x 1088) is cut to the size asked for (image.rs crop_png)
+png = "0.18"
+# Save to cloud: the shared page's small WebP versions of a picture (webshare.rs; libwebp, built from source)
+webp = "0.3"
+# The local web server (127.0.0.1:7526) and its calls to planetcompute.ai (rustls, so Linux needs no OpenSSL).
+axum = { version = "0.8", features = ["ws"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "sync", "fs", "io-util"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+dirs = "6"
+# The tunnel link: one outbound WebSocket to planetcompute.ai (rustls with ring, like reqwest).
+tokio-tungstenite = { version = "0.26", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+base64 = "0.22"
+uuid = { version = "1", features = ["v4"] }
+# Harness: SHA-256 of downloaded models
+sha2 = "0.10"
+# WorkPacks: kernels, the binary pack format and the SherpaHub (docs/SHERPAHUB.md); its own crate, tested on its own
+workpack = { path = "workpack" }
+# Harness: free disk space next to the models
+fs2 = "0.4"
+# llama.cpp, statically linked. Backend features (vulkan, cuda) are switched on per build in CI.
+llama-cpp-2 = { version = "0.1", optional = true }
+llama-cpp-sys-2 = { version = "0.1", optional = true }
+
+# The engines' sandbox on Linux and macOS (sandbox.rs): Landlock, seccomp, sandbox_init, through the C library
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_System_LibraryLoader"] }
+
+[features]
+default = ["custom-protocol", "llama"]
+# The window and the tray icon (Tauri). Without it: the server build (linux-x86_64-server), always headless, needing no
+# desktop libraries (no WebKitGTK / GTK), for workhorse servers: --no-default-features --features llama
+window = ["dep:tauri"]
+# Embed ui/ in the program (what `cargo tauri build` turns on); without it Tauri expects a dev server.
+custom-protocol = ["window", "tauri/custom-protocol"]
+llama = ["dep:llama-cpp-2", "dep:llama-cpp-sys-2"]
+vulkan = ["llama", "llama-cpp-2/vulkan"]
+cuda = ["llama", "llama-cpp-2/cuda"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true

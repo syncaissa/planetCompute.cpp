@@ -1,0 +1,18 @@
+This is the stable-diffusion.cpp source planetCompute's image engine is built with (Harness: Generate image,
+later Generate video). stable-diffusion.cpp is an engine like llama.cpp, for image and video models, on the same
+ggml library: https://github.com/leejet/stable-diffusion.cpp (MIT licence).
+
+Pinned: release master-945-a1ded76, commit a1ded76da5818803fca97a3b433669ef727d32cf (2026-10-06), with its
+submodules ggml 89c4413f5da6fb20cc796f16033d37f129be81fd, thirdparty/libwebp 0c9546f7efc61eac7f79ae115c3f99c91c21c443,
+thirdparty/libwebm 5bf12267eea773a32fcf4949de52b0add158a8d5 (examples/server/frontend is not used).
+
+CI (.github/workflows/client.yml) clones exactly this commit, builds its sd-cli program for each platform (CPU,
+Metal, Vulkan) and the planetCompute program carries it inside (client/build.rs, src/image.rs): on first use it is
+written to <data>/planetCompute/bin/ and run as a separate process. Separate, because stable-diffusion.cpp uses its
+own patched ggml, which cannot be linked into the same program as llama.cpp's ggml.
+
+The archive here (source without .git, assets/ and docs/; 17 MB, git-ignored, also in B2 under
+client/sources/) is the local copy the project keeps of everything it builds.
+
+Patch (2026-10-27): CI applies scripts/patch_sd_cli.py before building sd-cli: PC_CROP=WxH in the environment cuts each
+result (picture or video frame) to that size around its centre (1920 x 1080 from 1920 x 1088). Nothing else changes.

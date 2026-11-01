@@ -1,0 +1,1254 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------------------------------------------------------------------------
+% Author block — edit here.
+\newcommand{\paperauthor}{Milind K. Patil}
+\newcommand{\paperaffil}{Syncaissa Systems Inc.\ \textbullet\ PlanetCompute.ai}
+\newcommand{\paperemail}{syncaissa@outlook.com}
+\newcommand{\paperdate}{October 2026}
+\newcommand{\coderepo}{https://github.com/syncaissa/planetCompute.cpp}
+\newcommand{\coin}{PlanetComp Coin}
+\newcommand{\cointicker}{PCC}
+\newcommand{\chain}{Solana}
+\newcommand{\shorttitle}{PlanetCompute: Toward a Verifiable AI Grid of Idle Browsers and Desktops}
+% ---------------------------------------------------------------------------
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.6cm,top=2.8cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs,tabularx,array,multirow}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{pifont}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage[skins,breakable]{tcolorbox}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
+\usepackage[authoryear,round]{natbib}
+\usepackage[colorlinks=true,citecolor=green!45!black,linkcolor=blue!70!black,urlcolor=blue!70!black]{hyperref}
+\usepackage{microtype}
+
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\newcommand{\pmark}{$\sim$}
+\newcommand{\tbd}{\textcolor{red!70!black}{\textbf{TBD}}}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small \shorttitle}
+\fancyfoot[C]{\thepage\ of \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.5pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyhead[L]{\small \shorttitle}\fancyfoot[C]{\thepage\ of \pageref{LastPage}}}
+
+\newtcolorbox{pcnotice}{enhanced,breakable,colback=orange!6!white,colframe=orange!70!black,
+  fonttitle=\bfseries,title=Disclaimer,arc=2mm,boxrule=0.8pt}
+\newtcolorbox{keyinsight}{enhanced,breakable,colback=blue!5!white,colframe=blue!55!black,
+  fonttitle=\bfseries,title=Key Insight,arc=2mm,boxrule=0.8pt}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}[section]
+
+\setlist{itemsep=2pt,topsep=4pt}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries PlanetCompute: Toward a Verifiable AI Grid\\[2pt] of Idle Browsers and Desktops\par}
+  \vspace{10pt}
+  {\large Design, First Measurements, and a Simulation at a Million Devices\par}
+  \vspace{14pt}
+  {\large \paperauthor\par}
+  {\paperaffil\par}
+  {\ttfamily \paperemail\par}
+  \vspace{8pt}
+  {\paperdate\par}
+\end{center}
+
+
+\vspace{6pt}
+\begin{abstract}
+\noindent
+We present \textbf{PlanetCompute}, a volunteer-computing system that aims to serve AI inference from idle
+browsers and desktops, and we report what is built, what is measured and what is only simulated. Built: one job
+format (\textbf{WorkPacks}) whose integer kernels give bit-identical results as WebAssembly in a browser and as
+native code in a Tauri~2 desktop program, which also runs whole chat and image prompts in sandboxed llama.cpp and
+stable-diffusion.cpp engines; commit-then-random-audit leases; and a \textbf{SherpaHub} that cuts matrix
+multiplies into packs checked by Freivalds' method, which finished two split jobs of up to 262{,}144 units with no
+wrong answer on one operator server, though at only $1.5\%$ of the kernel's speed, limited by round trips; we
+show that over home links such packs are bounded by upload bandwidth. Measured offline on three NVIDIA GPU types, but not yet in the program:
+single-step diffusion and teacher-forced LLM audits that cost $3.3$--$8.9\%$ of the work. Analysed and simulated:
+we argue for cutting the work rather than the model and size packs by a square-root law; derive the exact
+collusion probability of quorum validation, under which a naive ``first three matching answers'' rule accepts
+$5.8\%$ wrong packs at 20\% colluders ($6.1\%$ in simulation); show that spare replicas, network-distinct quorums and retroactive
+invalidation remove these errors in simulation; and simulate the orchestrator at a million devices, where, with 2\% ordinary cheaters, no
+wrong answer reached a consumer uncorrected and a low-cost design cut the list-price running cost from
+\$111.54 to \$9.80 an hour at the price of latency. No volunteer outside the operator's servers has yet taken part.
+\end{abstract}
+
+\noindent\textbf{Keywords:} volunteer computing, compute grid, WorkPacks, AI inference, competitive dispatch,
+network-distinct quorum, Freivalds' check, audits, WebAssembly, Tauri, llama.cpp, sabotage tolerance
+
+\section*{Executive Summary}
+\addcontentsline{toc}{section}{Executive Summary}
+Every night, millions of PCs and laptops sit idle for hours, mine and yours included. So why not lend that spare
+power to each other? With PlanetCompute, your idle machine shares its compute by helping run jobs for others, and
+you collect PlanetComp points in return. When you need serious power yourself, you draw compute from the network
+and points are deducted from your balance. Your lifetime contributions are tracked separately, for bragging rights.
+To keep the ledger consistent and tamper-proof, PlanetComp points are recorded as a token on the Solana
+blockchain. Imagine one day rendering a full 100-minute movie on the world's spare computers while you sleep (long
+video is designed, not yet built): no render farm, no huge cloud bill, just a community helping each other. It might
+take a few weeks to finish, but you pay no cloud bill: only your own electricity, through the points you collected
+by sharing your own idle time.
+
+Of course, this only works if enough compute is contributed to the community pool. As of this paper's release the
+pool is empty, so we're seeding it with our own compute to get things started, though even that may not be enough
+at first. As more members join and the network becomes self-sufficient, we'll gradually reduce our share and
+may eventually phase it out completely.
+
+\begin{pcnotice}
+PlanetComp is a ledger of contributions only and may have no monetary value. Check your country's and local laws:
+if you cannot hold crypto where you live, refrain from transferring any PlanetComp to your wallet, although it may or
+may not have value. User discretion is required.
+\end{pcnotice}
+
+\section{Introduction}
+
+Harvesting idle cycles is older than the web: Xerox PARC's ``worm'' programs spread one computation across idle
+workstations at night in 1982 \citep{shoch1982worm}, Condor scheduled jobs onto idle workstations from 1988
+\citep{litzkow1988condor}, and in 1989 volunteers' computers factored large numbers from pieces sent by email
+\citep{lenstra1990factoring}. BOINC \citep{anderson2004boinc,anderson2020boinc} later showed that
+millions of volunteers will donate compute, Folding@home \citep{beberg2009folding,zimmerman2021folding} reached exascale in 2020, and
+commercial successors (Golem \citep{golem2016}, Salad \citep{salad}) added payment. Generative AI now creates a
+new kind of demand: image, video and chat inference whose units are, once cut the right way, largely
+independent of each other.
+
+Four problems persist. (1)~\textbf{The host dilemma:} native clients run overnight and reach the GPU but
+must be built, signed and trusted per platform; browser clients need no install but are throttled and die
+with the tab. (2)~\textbf{Code safety:} volunteers must trust each project's native binaries.
+(3)~\textbf{Consent:} in-browser mining was overwhelmingly covert
+\citep{eskandari2018cryptojacking,konoth2018minesweeper}. (4)~\textbf{Verification and fair credit:} unchecked,
+a few percent of cheaters poison a result set \citep{sarmenta2002sabotage}.
+PlanetCompute answers with four principles: the \textbf{WorkPack is the portable unit} (a signed job with fixed inputs whose result
+is the same bytes on every host); \textbf{two hosts, one format}; \textbf{competition
+with consolation} (the first validated finisher receives the largest credit, other matching finishers
+consolation credit); and \textbf{validation as protocol} (quorum, audits, strikes and credit are specified,
+not left to client goodwill).
+
+\subsection{Contributions}
+\begin{enumerate}
+  \item A \textbf{two-host design} in which the browser and the desktop program compute the same packs with
+  bit-identical results (fixed WebAssembly and native kernels, one binary pack format, leases with
+  commit-and-audit) and the desktop also runs whole AI prompts; a general byte ABI for third-party modules
+  is specified but not yet built (Section~\ref{sec:arch}).
+  \item \textbf{Inference WorkPack design}: a communication argument against splitting models, a
+        square-root law for pack size validated in simulation, and audit verification with an escrow rule
+        (Section~\ref{sec:design}).
+  \item \textbf{QuickMode/BatchMode} queues and \textbf{SherpaHub}, with measured kernels, a fault
+        simulator, a live broker and two live split jobs (Section~\ref{sec:batchmode}).
+  \item \textbf{Offline GPU measurements} of throughput, cross-GPU reproducibility and audit cost, in PyTorch
+        and vLLM; the audits are not yet in the program (Section~\ref{sec:bench}).
+  \item \textbf{Validation and credit}: the exact quorum-race probability, strikes with retroactive
+        invalidation, and commit-then-random-audit (Section~\ref{sec:verify}).
+  \item \textbf{Competitive dispatch} with a closed-form attack analysis and a hybrid rule that is fast, fair
+        and, with penalties, zero-error in simulation (Section~\ref{sec:race}).
+  \item An \textbf{orchestrator simulated at a million devices}, with its faults, results and running cost
+        (Section~\ref{sec:orch}).
+  \item A threat model and privacy tiers (Section~\ref{sec:threat}), and \texttt{planetCompute}, one
+        program that contributes a machine and serves models on it, with its first measurements and tests
+        (Section~\ref{sec:client}).
+\end{enumerate}
+\noindent All code, scripts, raw results and test logs are in the repository (\url{\coderepo}).
+
+\section{The PlanetCompute Architecture}\label{sec:arch}
+
+Figure~\ref{fig:arch} shows the system as built: one job format, two hosts. Table~\ref{tab:builtspec}
+separates what runs today from what is specified.
+
+\begin{table}[ht]
+\centering
+\caption{Built today and specified.}\label{tab:builtspec}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+ & \textbf{Built today} & \textbf{Specified, not built} \\
+\midrule
+Job kinds  & Credit WorkPacks (Monte Carlo samples); int8 matrix maths packs (Split); whole prompts for chat, pictures and video (WholeMode, desktop only) & Any third-party module, fetched by SHA-256 and checked against a signed manifest \\
+Kernels    & Fixed: WebAssembly SIMD or JavaScript in the browser, native SSE2 or NEON on the desktop; bit-identical, tested on every build & The byte ABI (\texttt{pc\_alloc}, \texttt{pc\_run}, \texttt{pc\_output}; no imports) \\
+Determinism & Integer kernels and conformance vectors & The determinism profile for any admissible module \\
+Transport  & Leases on each device's capacity-check socket; the SherpaHub broker's binary pack messages & \texttt{POST /v1/claim} and \texttt{POST /v1/units/\{id\}/result} \\
+Checking   & Commit-then-random-audit of credit packs; Freivalds on every maths pack; a share of whole prompts repeated on another computer & Network-distinct quorum and competitive race for every unit (simulated, Sections~\ref{sec:verify} and~\ref{sec:race}) \\
+GPU        & Browser WebGPU WorkPacks (code and audits tested on the CPU; not yet on a real GPU); the desktop's AI engines & Desktop GPU WorkPacks through wgpu \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw,rounded corners=3pt,align=center,inner sep=3pt},
+  job/.style={box,fill=orange!18,text width=2.3cm},
+  host/.style={box,fill=blue!8,text width=5.9cm},
+  srv/.style={box,fill=green!12,text width=2.6cm},
+  >={Stealth[length=2mm]}]
+  \node[job] (job) at (0,0) {\textbf{WorkPack}\\ built-in job kind + seed or input $x$, signed lease};
+  \node[host] (br) at (4.95,0.85) {\textbf{Browser host} (while the tab is open)\\ a Web Worker per core: WebAssembly\\ SIMD or JavaScript; WebGPU};
+  \node[host] (ta) at (4.95,-0.85) {\textbf{Desktop host} (Tauri 2, tray app)\\ a thread per core: native SSE2 / NEON;\\ llama.cpp, sd.cpp in the OS sandbox};
+  \node[srv] (disp) at (10.0,0.85) {\textbf{Dispatcher}\\ leases, capacity check, broker};
+  \node[srv] (val) at (10.0,-0.85) {\textbf{Validator}\\ audits, Freivalds, repeats};
+  \node[srv,text width=1.5cm] (led) at (12.8,0) {\textbf{Credit ledger}\\ validated $w_u$};
+  \draw[->,dashed] (job.east) -- (br.west);
+  \draw[->,dashed] (job.east) -- (ta.west);
+  \draw[<->] (br.east) -- (disp.west);
+  \draw[<->] (ta.east) -- (disp.west);
+  \draw[->] (disp) -- (val);
+  \draw[->] (val.east) -- (led);
+\end{tikzpicture}
+\caption{PlanetCompute as built. Both hosts compute the same WorkPack kinds with bit-identical results
+(WebAssembly or JavaScript in the browser, native kernels on the desktop) and report to one dispatcher,
+validator and credit ledger. The page comes from one Cloudflare Worker; the program ships as builds signed with the project's Ed25519 key (not yet code-signed by the operating systems) for
+Windows, macOS and Linux (sd.cpp: stable-diffusion.cpp). Third-party modules fetched by hash, the byte ABI and their \texttt{/v1/claim} protocol
+are specified, not built (Table~\ref{tab:builtspec}).}\label{fig:arch}
+\end{figure}
+
+\paragraph{Specified: the general WorkPack.}
+\begin{definition}[WorkPack]
+A WorkPack is a tuple $U=(\mathit{id},\,h_M,\,x,\,\pi,\,\mathcal{K},\,w,\,t_{\mathrm{dl}})$ where $h_M=\mathrm{SHA256}(M)$
+identifies module $M$, $x$ is the input byte string, $\pi\in\{\textsf{cpu},\textsf{gpu},
+\textsf{nn}\}$ the tier, $\mathcal{K}$ the minimum host capabilities, $w$ the benchmark-normalised cost used for
+credit, and $t_{\mathrm{dl}}$ the deadline.
+\end{definition}
+
+In the specification, modules are fetched by hash and checked against a signed manifest before use, so a
+tampered CDN can deny service but never substitute code. A module \textbf{imports nothing} and exports one memory
+and three functions, $\texttt{pc\_alloc}(n)$, $\texttt{pc\_run}(p,n)$ and $\texttt{pc\_output}()$; the result
+is $r=\mathrm{SHA256}(M(x))$, and with no imports a module has no clock, randomness, I/O or network. A module is
+\emph{admissible} if it validates under WebAssembly~2.0 \citep{w3c2025wasm} with no threads, no relaxed-SIMD and
+no non-canonical NaN bits in its output; admissible modules give the same bytes in every engine.
+
+\textbf{Built today.} The job kinds are fixed and built in (Table~\ref{tab:builtspec}), with
+bit-identical results on both hosts tested on every build, so a Chrome tab and the program on Linux, macOS or
+Windows form \emph{one} validation pool; the two-verb \texttt{/v1} protocol is for third-party modules.
+
+\paragraph{GPU.} WebGPU \citep{w3c2025webgpu} runs the browser's GPU WorkPacks; wgpu \citep{wgpu} would run the
+same WGSL shaders natively on the desktop (planned). The desktop reaches the GPU today through its AI engines,
+which ship inside the signed program and run in the operating system's sandbox; a job supplies only a model
+name and inputs. \textbf{No tier ever executes native code supplied by a job.}
+
+\paragraph{Politeness.} Today a device computes only with recorded consent, on the cores its owner grants and
+under a CPU cap $\gamma$: after each pack of length $t$ a worker rests $t(1-\gamma)/\gamma$, so PlanetCompute's share
+of a granted core is at most $\gamma$, and the program's WorkPacks pause while it answers a chat job or makes a
+picture. The specification adds user idle, AC power, allowed hours, a thermal limit and other processes' load below
+0.20, which a browser observes only in part (Table~\ref{tab:signals}).
+
+\section{Designing WorkPacks for Inference}\label{sec:design}
+
+PlanetCompute targets cheap inference for image, music, video, chat and coding. The central design question
+is how to cut a job into WorkPacks so that the answer arrives with minimum wait.
+
+\subsection{Cut the Work, Not the Model}
+
+Over the internet the hop between two machines costs far more than the arithmetic it carries. With
+illustrative values (one-way latency 20~ms, residential upload 2.5~MB/s, an RTX~4090-class GPU), an 8B LLM at
+4-bit (32 layers) decodes a token in $\approx$5~ms on one machine (Table~\ref{tab:split}).
+
+\begin{table}[ht]
+\centering
+\caption{Splitting one LLM across volunteer machines (illustrative).}\label{tab:split}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Split} & \textbf{Time per token} & \textbf{vs.\ one machine} \\
+\midrule
+Whole model on one machine & $\approx$5 ms & $1\times$ \\
+One layer per machine (pipeline) & $32\times 20$ ms $=640$ ms & $\approx130\times$ slower \\
+Every matmul over $k$ machines (tensor parallel) & $2\times32\times40$ ms $=2.56$ s & $\approx500\times$ slower \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Diffusion is no different: handing an SDXL latent (131~KB) on after each denoising step costs
+$\approx$72~ms against a 0.1--0.3~s step (Table~\ref{tab:bench-throughput}), and gains nothing, because step $k{+}1$ needs step $k$. A job is
+therefore split only along an axis that is \textbf{parallel} and \textbf{coarse} (compute per hop at least
+nine times the hop's cost): requests, seeds, images, tiles, keyframe-anchored video chunks, audio segments,
+code candidates and test files. Steps, tokens and layers are never split across machines in QuickMode; a
+model that fits no single volunteer is served as a fixed pipeline lane in the style of Petals
+\citep{borzunov2023petals}. An \emph{inference WorkPack} is thus a run of $b$ independent units of one job, for
+one \emph{lane} (model hash, quantisation, runtime) that the device already holds in memory.
+
+\paragraph{Frame-parallel video.} Video looks sequential but need not be. A plan stage computes a motion plan
+$m=\Phi(I_0;s)$ with a shared seed $s$, in which each region moves by closed-form kinematics,
+$\mathbf{p}_r(t)=\mathbf{p}_r+\mathbf{v}_rt+\tfrac12\mathbf{a}_rt^2$; keyframes $K_j=G_\theta(I_0,m,j\Delta;s)$ are
+then mutually independent, and in-between frames depend only on their two neighbouring keyframes
+\citep{huang2022rife}. In practice a pack is a keyframe-anchored chunk in the model's native window (16--81
+frames, 4--8 frames of overlap), because current video models generate a window jointly. Every job uses at
+most three stages: a small plan, one wide parallel stage, and a merge (Figure~\ref{fig:dag}).
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[font=\footnotesize,>={Stealth[length=1.8mm]},
+  n/.style={draw,rounded corners=2pt,minimum width=0.9cm,minimum height=0.5cm,inner sep=2pt},
+  a/.style={n,fill=orange!20}, b/.style={n,fill=blue!10}, c/.style={n,fill=green!12}]
+  \node[n,fill=gray!15] (src) at (0,0) {$I_0$};
+  \node[a] (plan) at (1.9,0) {Plan $m$};
+  \foreach \j/\y in {1/1.05,2/0.35,3/-0.35,4/-1.05} {\node[b] (k\j) at (4.2,\y) {$K_{\j}$};}
+  \foreach \j/\y in {1/0.7,2/0,3/-0.7} {\node[c,minimum width=1.9cm] (i\j) at (7.0,\y) {$I_t$ between $K_{\j},K_{\the\numexpr\j+1}$};}
+  \node[n,fill=gray!15,align=center] (vid) at (9.8,0) {Video $V$};
+  \draw[->] (src) -- (plan);
+  \foreach \j in {1,...,4} {\draw[->] (plan) -- (k\j);}
+  \foreach \j in {1,2,3} {\draw[->] (k\j) -- (i\j); \pgfmathtruncatemacro{\nx}{\j+1}\draw[->] (k\nx) -- (i\j);}
+  \foreach \j in {1,2,3} {\draw[->] (i\j) -- (vid);}
+  \node[font=\scriptsize,below=0.05cm of plan] {Stage A};
+  \node[font=\scriptsize] at (4.2,-1.5) {Stage B: parallel};
+  \node[font=\scriptsize] at (7.0,-1.5) {Stage C: parallel};
+\end{tikzpicture}
+\caption{Frame-parallel image-to-video (designed, not yet built). Stage~A runs once; Stages~B and~C fan out
+to as many idle machines as there are frames. Each box is one or more WorkPacks.}\label{fig:dag}
+\end{figure}
+
+\subsection{How Big Should a Pack Be?}
+
+Cut a stage of $W$ units into packs of $b$, pulled by $P$ devices, each pack paying overhead $T_o$, with $t$
+per unit and a tail proportional to pack length:
+\begin{equation}\label{eq:makespan}
+T(b)\;\approx\;\frac{W\,T_o}{P\,b}\;+\;\frac{W\,t}{P}\;+\;\kappa\,b\,t .
+\end{equation}
+
+\begin{proposition}[Square-root law]\label{prop:sqrt}
+Equation~\eqref{eq:makespan} is minimised at
+$b^\star=\sqrt{W\,T_o/(P\,\kappa\,t)}$, i.e.\ a pack time $\tau^\star=\sqrt{T_o\,T_{\text{ideal}}/\kappa}$, giving
+$T^\star=T_{\text{ideal}}+2\sqrt{\kappa\,T_o\,T_{\text{ideal}}}$ with $T_{\text{ideal}}=Wt/P$.
+\end{proposition}
+
+\noindent The optimum is flat ($2b^\star$ or $b^\star/2$ raise the overhead term by a quarter). A pull-based
+simulator (200 devices, log-normal speeds $\sigma=0.5$, $W\in\{4{,}000,40{,}000\}$, $T_o\in\{0.5,2\}$, optional
+churn $1/600$~s$^{-1}$, 8 or 14 pack sizes, 10 seeds each) confirmed it: \textbf{(i)}~with end-game hedging
+\citep{dean2004mapreduce} the fitted overhead term matches the prediction within
+$0.94$--$1.19\times$; \textbf{(ii)}~ten times more work grows $\hat b^\star$ by $2.4$--$3.2\times$ ($\sqrt{10}=3.16$)
+and four times the overhead by $1.8$--$2.2\times$ ($\sqrt4=2$); \textbf{(iii)}~hedging halves the tail coefficient (from
+$2.3$--$3.8$ to $0.9$--$1.8$) for $3$--$22\%$ extra executions; \textbf{(iv)}~one unit per pack is up to
+$2.7\times$ slower than the best size; \textbf{(v)}~speed-matched packs with hedging were fastest in all eight
+settings, $8$--$26\%$ faster than hedging alone without churn but only $2$--$8\%$ with churn. The dispatcher
+therefore sizes packs by \emph{time}, per device,
+\begin{equation}\label{eq:sizing}
+\tau_d=\operatorname{clamp}\!\Big(\sqrt{T_oT_{\text{ideal}}/\kappa},\;\;9\,T_o,\;\;
+\min\big(0.05/\lambda_d,\;\text{SLO}\big)\Big),\qquad b_d=\max\big(1,\lfloor \tau_d/t_d\rfloor\big),
+\end{equation}
+where $9T_o$ keeps efficiency at least $90\%$ and $0.05/\lambda_d$ keeps the chance that device $d$ stays
+until the pack ends at least $95\%$. Packs land between about ten seconds and five minutes of compute.
+
+\subsection{Verification at a Few Percent}\label{sec:audits}
+
+Replication is affordable for small CPU packs but not for GPU inference, which is to be checked by audit.
+Both audits below are specified and measured offline (Section~\ref{sec:bench}); neither is in the program yet,
+which today repeats a share of whole prompts on a second computer instead (Table~\ref{tab:builtspec}).
+\textbf{Diffusion trace audit:} the initial noise comes from the pack seed by a deterministic CPU generator;
+the worker commits the Merkle root of its latents, and an audit recomputes one random step $(x_k,x_{k-1})$
+within a tolerance calibrated across GPU types. It costs one step in $S$ and catches a worker that faked a
+fraction $g$ of steps with probability $g$. \textbf{Teacher-forced LLM audit:} sampling is seeded,
+$y_i=\arg\max_v(z_{i,v}/T+G_{i,v})$ with Gumbel noise from the pack seed, so the validator checks an answer in
+one parallel prefill, tolerating differences only where the top two choices are within a calibrated margin.
+
+\begin{proposition}[Escrow rule]\label{prop:escrow}
+Hold each worker's last $H$ pack credits $R$ in escrow, forfeited on a failed audit. If audits occur at rate
+$a$ and detect a fake with probability $p_d$, and skipping a pack saves at most $c\le R$, cheating is
+unprofitable whenever $a\ge 1/\big(p_d(1+H)\big)$.
+\end{proposition}
+\begin{proof}
+A faked pack earns $(1-ap_d)R-ap_dHR$ in expectation against $R-c$ for an honest one; cheating does not pay
+iff $ap_d(1+H)R\ge c$, which holds for all $c\le R$ when $ap_d(1+H)\ge1$.
+\end{proof}
+
+\noindent With $H=49$, an audit rate of $2\%$ deters whole-output fakes and $4\%$ deters fakes of half the
+steps. Weights are the largest fixed cost (an 8B LLM at 4-bit takes $\approx$6.5~minutes at 12.5~MB/s), so a
+device joins one lane per session and caches weights by hash.
+
+\section{QuickMode, BatchMode and SherpaHub}\label{sec:batchmode}
+
+Every job declares \emph{when} it must finish and \emph{how} it can be cut. The \textbf{QuickMode} queue
+serves a waiting person in seconds; the \textbf{BatchMode} queue serves jobs that can wait hours or days
+(science, long videos). \textbf{WholeMode} sends a job uncut to one program (a WorkPack of one unit);
+\textbf{Split} cuts it into many WorkPacks. The choices are independent, so one pipeline (job $\rightarrow$
+queue $\rightarrow$ units $\rightarrow$ WorkPacks $\rightarrow$ devices) serves all four cases; QuickMode is
+always served first and BatchMode fills every gap. Contributors are of three kinds: a browser tab, the
+regular program, and the same program started as a \emph{SherpaHub}. A regular program \emph{does} the work;
+a SherpaHub \emph{organises} it.
+
+\paragraph{Why BatchMode changes the communication limit.} The argument of Section~\ref{sec:design} is about
+waiting time. In BatchMode nobody waits: a SherpaHub keeps hundreds of units in flight, so while one waits
+on the network others compute, and only the \emph{total} maths and bytes remain.
+
+\paragraph{SherpaHub.} A SherpaHub holds a model's weights and runs its flow step by step, but cuts each large
+matrix multiply into \emph{maths packs} (``multiply this block by that block'') that browsers compute in
+their WebAssembly sandbox with no model installed. Blocks use int8 inputs and exact 32-bit sums, so every
+device returns bit-identical results. A product $C=AB$ is checked with Freivalds' method
+\citep{freivalds1977probabilistic}: test $A(Br)=Cr$ for a random $r$ in $O(n^2)$ instead of $O(n^3)$. With the entries of $r$ drawn
+uniformly from a set $S$ of integers and exact integer arithmetic, a wrong $C$ passes one test with probability
+at most $1/|S|$ (Schwartz--Zippel); we use $S=[-2^{15},2^{15})$ and 64-bit sums, so $2^{-16}$ per round, and the
+SherpaHub checks \emph{every} pack with no replicas. It keeps the small parts (normalisation, softmax, encoding) itself; attention, with no weights to
+cache, is the open problem. A SherpaHub needs memory, disk, uptime, bandwidth and trust rather than GPU
+power, so it may be a CPU-only computer; running one is opt-in, with a data limit set by its owner.
+
+\paragraph{What is built.} Three of four stages are built and tested; the fourth, real model work cut into
+maths packs, is not. (1)~\textbf{Kernels that agree everywhere}: the int8 multiply in the program (SSE2 or NEON),
+as a 655-byte WebAssembly SIMD module and in plain JavaScript is bit-identical on fixed test vectors in each of
+the five builds (\texttt{--workpack-check}); per core on one AMD EPYC server the program does 57.9, browser SIMD
+24.7 and plain JavaScript 2.05 billion operations a second; two Freivalds rounds let a wrong result pass with
+probability at most $(2^{-16})^2=2^{-32}$. (2)~\textbf{The SherpaHub}, a pure state machine that cuts a job, sizes packs,
+checks every result, strikes and bans liars, checkpoints and assembles; with up to 2{,}000 slow, leaving, lying or
+message-losing simulated devices it gave an exact result in every scenario, at \textbf{1.09 times the ideal
+time} with 0.1\% of the work done twice when each device had ample work (about $2\times$ with little work per
+device, and $1.0$--$2.7\times$ under liars, departures and hub crashes). (3)~\textbf{The website's broker}: the SherpaHub and every device keep
+one outbound WebSocket to a Cloudflare Durable Object that relays binary messages unread (1~MiB a message,
+2{,}000 devices a SherpaHub). End to end, three browser-code devices and three programs computed a 4{,}096-unit
+job, liars were banned after three strikes, and a SherpaHub killed in a 16{,}384-unit job continued after a
+restart with the 4{,}476 units already done.
+
+\paragraph{Bytes per operation: what limits Split.} Hiding latency removes waiting, not bytes. A unit
+$C_{ij}=A_iB_j$ with $T\times T$ tiles and inner dimension $K$ costs $2T^2K$ operations and returns $4T^2$ bytes
+of exact 32-bit sums, plus up to $2TK$ bytes of int8 inputs when neither block is cached. The results alone carry
+one byte per $K/2$ operations, so a device with upload $B_{\uparrow}$ bytes a second, and a SherpaHub with download $B_{\downarrow}$, can
+sustain at most
+\begin{equation}\label{eq:bw}
+R_{\text{device}}\le \tfrac{K}{2}\,B_{\uparrow}, \qquad R_{\text{job}}\le \tfrac{K}{2}\,B_{\downarrow}
+\end{equation}
+operations a second. With $K=4{,}096$, a browser core at 25 billion operations a second would upload 12~MB/s, but
+a 2.5~MB/s home upload allows 5.1 billion per \emph{device}, a fifth of one core however many cores it has; and
+each Gbit/s of the SherpaHub's link caps a job at 256 billion operations a second, about four of the program's
+EPYC cores. Section~\ref{sec:design}'s conclusion therefore holds in BatchMode too: spreading a model's matrix
+multiplies over home connections (stage~4) is bandwidth-bound by Equation~\eqref{eq:bw}, which is why stage~4 is
+not built. Split maths packs suit jobs with a large inner dimension or a small output, and devices on fast links;
+exact int32 results cannot be shrunk without giving up the exact check.
+
+\paragraph{Live split jobs (31 October 2026).} Two matrix jobs ran on the operator's rented server, on four
+program copies of four cores each (no browser joined); Table~\ref{tab:split-live} gives the results. The result
+($4MN$ bytes, 16~GiB for the second job) is kept on the SherpaHub's disk and deleted once the final check
+passes, so a job's real size limit is that disk's free space.
+
+\paragraph{Why the live jobs were slow.} The second job reached 13.7 billion operations a second on 16 cores,
+about $1.5\%$ of the 926 billion that the kernel's measured speed allows (its 42~min 44~s include about 30~s
+before the first device joined); one core alone would have needed about
+ten minutes instead of 43. The kernel is not the cause; the protocol is. A result must fit in one broker message
+(1~MiB), so a pack holds at most 15 units of $128\times128$ (10.8 on average), about 9~ms of work on four cores;
+each device has one pack in flight; and every message, including the 512~KiB input blocks, crosses the Cloudflare
+broker although the SherpaHub and the devices share one server. From the job's totals each device finished a pack
+every $4\times2{,}564/24{,}359=0.42$~s and spent about 6.3~ms of it computing, so it was busy $1.5\%$ of the
+time, which is the measured shortfall. These packs were capped by the 1~MiB message limit far below the $9T_o$ floor of
+Equation~\eqref{eq:sizing}, whose efficiency bound $6.3/(6.3+415)\approx1.5\%$ predicts exactly this. The
+breakdown is inferred from the counters and the code. The fix, several packs in flight per device and reuse of
+the input blocks a device holds, is now built and tested in the SherpaHub simulator ($8.9\times$ faster on the
+live job's shape); a live rerun is pending. Equation~\eqref{eq:bw} sets the limit that remains, since keeping up with four cores would take
+about 113~MB/s of results per device. The live jobs show correctness (every unit checked, no wrong answer), not
+speed.
+
+\begin{table}[ht]
+\centering
+\caption{Split matrix jobs on the live servers, 31 October 2026. Job 1's final pack count was not logged: 79 had
+been sent by 2{,}493 of its 4{,}096 units.}\label{tab:split-live}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+ & \textbf{Job 1} & \textbf{Job 2} \\
+\midrule
+Product ($M\times K\times N$), tile & $4096^3$, $64\times64$ & $65{,}536\times4{,}096\times65{,}536$, $128\times128$ \\
+Units / operations & 4{,}096 / 137 billion & 262{,}144 / 35{,}184 billion \\
+Packs & $\ge79$ & 24{,}359 (33 re-sent after a timeout) \\
+Time & about 15--20 s & 42 min 44 s (13.7 billion operations/s) \\
+Share of the kernel's speed (16 cores) & about 1\% & 1.5\% \\
+Wrong answers / strikes / final check & 0 / 0 / passed & 0 / 0 / passed \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{In-house SherpaHubs.} The operator's own SherpaHubs also run batches of whole prompts (WholeMode),
+with 10\% made a second time on a different computer with the same seed, and two switches:
+\emph{SupplySimulation} (also contribute) and \emph{DemandSimulation} (also send low-priority test jobs). In an
+eight-hour side-by-side run on 30~October 2026 against five dedicated load scripts on the same server
+(Table~\ref{tab:real}), its jobs were answered almost as often and as fast, by the same five computers (its
+longer tail is expected: they are low priority); the scripts were then retired.
+A 512$\times$512 Z-Image Turbo picture took 1{,}037~s on about nine CPU cores of that server.
+
+\section{GPU Measurements}\label{sec:bench}
+
+We ran the benchmarks on three RunPod GPUs that stand in for volunteer classes: an RTX~3090 (older gaming
+desktop), an RTX~4090 (current gaming desktop) and an A100~80GB (server), with the same script on each
+(PyTorch~2.4.1, CUDA~12.4, diffusers~0.32.2, transformers~4.46.3, vLLM~0.6.3); every GPU then audited the
+other two GPUs' outputs. Scripts and raw results are in the repository (\url{\coderepo}).
+
+\begin{table}[ht]
+\centering
+\caption{Measured time per work unit (B1). LLM throughput uses vLLM with 4-bit AWQ models and 512 output
+tokens per request; 32B does not fit in 24~GB. LTX-Video on the 24~GB cards ran with CPU offload.}\label{tab:bench-throughput}
+\small
+\input{generated/bench_throughput.tex}
+\end{table}
+
+\paragraph{Throughput (B1).} An SDXL image takes $3.7$~s on the 4090 and $9.4$~s on the 3090. A 7B model
+decodes 122--155 tokens per second for one request (6.5--8~ms per token, close to the 5~ms assumed in
+Table~\ref{tab:split}) and 2{,}200--3{,}200 at batch 32, which is why batch chat suits volunteers. MusicGen ran
+faster on the 3090 pod because its generation loop is bound by the host CPU.
+
+\begin{table}[ht]
+\centering
+\caption{SDXL across GPU types (4 prompts, fixed seeds, CPU-generated initial noise). The last column
+is the largest relative error when one GPU recomputes a single denoising step of another GPU's trace.}\label{tab:bench-diff}
+\small
+\resizebox{\linewidth}{!}{\input{generated/bench_diffusion_cross.tex}}
+\end{table}
+
+\paragraph{Reproducibility (B4, B5).} The same seeded SDXL job rerun on the same GPU gave a byte-identical image
+on all three GPUs. Across types no image was bit-identical, but all matched at SSIM $0.986$--$0.998$ with a mean
+pixel difference of at most $1.1$ of 255 (Table~\ref{tab:bench-diff}). Whole trajectories drift about $1\%$ by
+the last step, but a \emph{single} step recomputed from the worker's own latent agrees within
+$5.3\times10^{-4}$ on every pair, so the trace audit uses a tolerance of $10^{-3}$. Teacher-forced audits of
+seeded Qwen2.5-7B sampling (fp16, temperature 0.8, 16 answers of 256 tokens, 4{,}096 tokens per pair)
+reproduced $99.88$--$99.95\%$ of tokens across GPU types and $99.90$--$99.95\%$ on the same type
+(Table~\ref{tab:bench-llm}); every disagreement on every pair occurred where the two best choices were
+within $0.035$. The audit therefore
+excuses only positions with margin below $\delta=0.05$; fewer than $2\%$ of positions have a margin below
+$0.1$.
+
+\begin{table}[ht]
+\centering
+\caption{Cost of one audit (B7). Diffusion: recomputing one denoising step, as a fraction of generating
+the image. LLM: one teacher-forced pass (fp16) over a 256-token answer, as a fraction of vLLM decoding the
+same number of tokens at batch 1 (4-bit AWQ, Table~\ref{tab:bench-throughput}); an fp16 decode would make the
+fraction smaller.}\label{tab:bench-audit}
+\small
+\resizebox{\linewidth}{!}{\input{generated/bench_audit.tex}}
+\end{table}
+
+\paragraph{Audit cost (B7).} Measured offline in PyTorch and vLLM, auditing one diffusion step costs $3.3$--$4.4\%$ of making the image, and auditing
+a whole LLM answer $7.9$--$8.9\%$ of decoding it (Table~\ref{tab:bench-audit}). At the 2--4\% audit rates of
+Proposition~\ref{prop:escrow}, verification would add about $0.1$--$0.4\%$ to the grid's cost, against $400\%$ for
+five-fold replication; this holds only once the audits run in llama.cpp and stable-diffusion.cpp with tolerances
+re-measured there.
+
+\paragraph{What carries over to volunteer machines.} The RTX~3090 and 4090 are the same GeForce consumer cards
+volunteers own. Table~\ref{tab:bench-llm} states, per measurement, what transfers. Volunteers will run llama.cpp,
+stable-diffusion.cpp or WebGPU rather than PyTorch, so each lane's tolerances are re-measured in its own runtime
+before it opens, and uncalibrated device classes run with full replication.
+
+\begin{table}[ht]
+\centering
+\caption{Top: teacher-forced audits of seeded LLM sampling (Qwen2.5-7B-Instruct, fp16, temperature 0.8, 16 answers
+of 256 tokens, 4{,}096 tokens per pair): tokens that disagree, and in brackets the largest margin between the two
+best seeded scores at any disagreement. Bottom: how each GPU measurement carries over to volunteer laptops, desktops
+and servers.}\label{tab:bench-llm}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Generated on} $\downarrow$ \quad audited on $\rightarrow$ & \textbf{RTX 3090} & \textbf{RTX 4090} & \textbf{A100 80GB} \\
+\midrule
+RTX 3090  & 0.10\% (0.035) & 0.05\% (0.010) & 0.07\% (0.021) \\
+RTX 4090  & 0.07\% (0.029) & 0.05\% (0.005) & 0.05\% (0.005) \\
+A100 80GB & 0.12\% (0.035) & 0.12\% (0.030) & 0.10\% (0.030) \\
+\bottomrule
+\end{tabular}
+
+\vspace{6pt}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Measurement} & \textbf{Carries over?} & \textbf{Why, and what is still needed} \\
+\midrule
+Same-GPU bit-identical results (B4) & Directly & Decided by architecture, kernels and versions; same for a home card with the same stack \\
+Cross-GPU tolerances (B4, B5) & Directly, for these architectures & Re-measure for AMD, Intel, Apple and other NVIDIA generations, and in each lane's runtime \\
+Audit cost as a fraction of work (B7) & Directly & Audit and work slow down together on a slower machine \\
+Seconds per image, token, chunk (B1) & As a scale & Laptops, politeness caps and heat lower it; each device is measured on joining \\
+Speed spread between devices & Supports the model & Measured $2.5$--$2.9\times$ SDXL gap, consistent with a wide spread such as the simulated $\sigma=0.5$ \\
+Download, network, churn, electricity, owner's use & No & Data-centre links; not measured; the protocol does not depend on these numbers \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Validation and Credit}\label{sec:verify}
+
+PlanetCompute credits only \emph{validated} work and \emph{verified} capacity and combines mechanisms from the sabotage-tolerance
+literature \citep{sarmenta2002sabotage,anderson2020boinc}.
+
+\paragraph{Quorum and the collusion race.} A unit is issued to distinct random devices until some result hash
+has $q$ matching votes. If a fraction $f$ of devices always returns the same wrong hash, acceptance is a race to
+$q$ votes.
+
+\begin{proposition}[Collusion race]\label{prop:race}
+Under uniform random assignment and negligible honest error, the colluders' hash is accepted with probability
+\begin{equation}\label{eq:race}
+P_{\text{wrong}}(f,q)=\sum_{k=0}^{q-1}\binom{q-1+k}{k}f^{\,q}(1-f)^{k}.
+\end{equation}
+\end{proposition}
+\begin{proof}
+The colluders win iff their $q$-th vote arrives while honest votes number $k\le q-1$, which by the negative
+binomial distribution has probability $\binom{q-1+k}{k}f^{q}(1-f)^{k}$; sum over $k$.
+\end{proof}
+
+\noindent For $q=2$ this is $f^2(3-2f)$, not the often quoted $f^2$: at $f=0.2$, $10.4\%$ rather than $4\%$.
+Quorum must therefore be paired with consequences. \textbf{Spot checks} insert known-answer units at rate $s$;
+a device cheating on a fraction $c$ of units survives $n$ units with probability $(1-sc)^n$.
+\textbf{Strikes:} a failed check or an outvoted result adds a strike; three strikes ban the device.
+\textbf{Retroactive invalidation:} on a ban, every unit the device helped accept is invalidated and re-queued.
+\textbf{Adaptive replication} \citep{anderson2020boinc}: a device with $\ge T$ consecutive validated results may
+be accepted alone, except for a random audit fraction $a$ (Algorithm~\ref{alg:validate}).
+
+\begin{algorithm}[ht]
+\caption{Validator: quorum with strikes and retroactive invalidation (abbreviated)}\label{alg:validate}
+\begin{algorithmic}[1]
+\Require unit $u$, quorum $q$, trust threshold $T$, audit rate $a$, max replicas $R_{\max}$
+\State $d_1\gets$ random eligible device
+\If{$\text{streak}(d_1)\ge T$ \textbf{and} $\text{rand}()\ge a$} accept $r(d_1)$; \Return \EndIf
+\Repeat\ issue $u$ to a new distinct device; on result $r$: $V[r]\gets V[r]+1$
+\Until{$\max_r V[r]\ge q$ \textbf{or} $R_{\max}$ replicas used}
+\State accept $r^\star\gets\arg\max_r V[r]$
+\ForAll{device $d$ with result $r_d$}
+  \If{$r_d=r^\star$} $\text{streak}(d)\mathrel{+}=1$; add $u$ to $\text{contrib}(d)$
+  \Else\ $\text{streak}(d)\gets0$; $\text{strikes}(d)\mathrel{+}=1$
+    \If{$\text{strikes}(d)\ge3$} ban $d$; re-queue all of $\text{contrib}(d)$ \Comment{retroactive}\EndIf
+  \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Simulation.} We simulated $2{,}000$ devices and $10^5$ units with honest error
+$e=10^{-3}$, adversary fractions $f$ from $0.01$ to $0.20$ and cheat probability $c\in\{1,0.1\}$, with $T=10$,
+$a=0.10$ and $s=0.05$. Table~\ref{tab:sim} gives the $f\in\{0.05,0.20\}$ grid; the simulator and every run are in the repository. Without validation the wrong rate is about $f\cdot c+e$. With quorum, strikes and retroactive invalidation
+every colluder was banned and \emph{no} wrong result remained among $10^5$ units (an upper bound of
+$3\times10^{-5}$ at 95\% confidence); the penalties, not the larger quorum, do the work. Adaptive replication is
+cheaper at a small residual error. Honest devices were banned only because being outvoted by colluders also earns
+a strike; rescinding strikes caused by devices later banned removes this.
+
+\begin{table}[ht]
+\centering
+\caption{Validation policies under collusion ($10^5$ units, 2{,}000 devices, seed 1): wrong results accepted
+(after retroactive invalidation) / executions per accepted unit (every execution, including spot checks and
+re-runs). Quorum banned every cheater in every cell; adaptive replication banned 100\% of always-cheaters and
+67\% and 66\% of stealthy ones. Honest devices banned: at most 6 under quorum, none under adaptive.}\label{tab:sim}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & \multicolumn{2}{c}{\textbf{Always cheat} ($c=1$)} & \multicolumn{2}{c}{\textbf{Stealthy} ($c=0.1$)} \\
+\cmidrule(lr){2-3}\cmidrule(l){4-5}
+\textbf{Policy} & $f=0.05$ & $f=0.20$ & $f=0.05$ & $f=0.20$ \\
+\midrule
+No validation & 5.08\% / 1.00 & 20.14\% / 1.00 & 0.61\% / 1.00 & 2.09\% / 1.00 \\
+Quorum $q{=}2$ & 0 / 2.01 & 0 / 2.03 & 0 / 2.06 & 0 / 2.22 \\
+Quorum $q{=}3$ & 0 / 3.01 & 0 / 3.03 & 0 / 3.09 & 0 / 3.30 \\
+Adaptive ($q{=}2$, spot $5\%$) & 0.10\% / 1.25 & 0.08\% / 1.25 & 0.22\% / 1.28 & 0.63\% / 1.36 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Credit and ledger.} Credit (shown to users as \emph{Compute Credit}, in Work Units, WU) measures validated computation. Device $d$'s credit is $C_d=\sum_{u\in\mathcal{V}_d} w_u$ over its validated
+units, where $w_u$ is the unit's benchmark-normalised cost; a verified device that delivers no pack is credited
+from its verified rating (below), never from a self-reported speed. Credits are an
+append-only ledger in Amazon DynamoDB, keyed by \texttt{pack\_id\#device\_id} so a retried report is never
+credited twice, with every credit of a pack and the running totals written in one transaction; clawbacks are
+reversing entries. A separate lifetime total, the sum of all credit ever earned, never decreases when credit is spent. These credits are the PlanetComp points of the Executive Summary: the DynamoDB ledger is the
+working record of every pack, and credit can be transferred out as the PlanetComp token on the Solana blockchain at
+a published rate; users need no wallet unless they choose to transfer, and the design anchors the Merkle root of all
+balances on chain each epoch so that anyone can check their own balance. Credit is redeemed one for one as free processing time on the grid,
+$G_d=C_d-\sum_{j\in\mathcal{J}_d}w_j\ge0$. Every check before a transfer, and the balance itself, live on the
+server; a program never computes its own credit and never holds a key.
+
+\paragraph{Capacity check.} Credit where no pack is delivered uses a \emph{verified} rating, never a
+self-reported one. One Durable Object per device sends a capacity test about once a minute: $k$ small chunks of
+the device's own kernel with random seeds, sized for about a second. It times the answer on its own clock, so
+network delay can only lower the measurement, and recomputes two random chunks; faking a fraction $g$ of the
+chunks is caught with probability about $1-(1-g)^2$ per test, and three failed tests in a row make the device
+unverified. A test costs about 1.7\% of the time.
+
+\paragraph{Commit, then random audit.}\label{sec:commitaudit} The capacity check shows what a machine
+\emph{can} do, not that its reported packs were computed. The program and the browser console therefore earn
+through \emph{leases} checked after the fact. A verified device receives a random base and a number of CPU
+WorkPacks of $4\times10^{6}$ samples each, sized for about ten minutes; every pack's seed follows from the base,
+so anyone can recompute any pack. When time is up the device \emph{commits} the Merkle root of its per-pack
+results; only then does the website choose $K=20$ packs at random, and the device must answer within a minute
+with each result and its Merkle path, which the website recomputes. A device that computed a fraction $h$ of its
+packs honestly passes with probability $h^{K}$: $12\%$ at $h=0.9$, $10^{-6}$ at $h=0.5$. A pass credits every
+pack; a fail credits nothing and is a strike, and three strikes in a row hold the device for an hour. GPU leases
+commit a Merkle \emph{sum} tree over dispatches of up to 8{,}192 groups and are audited on 16 groups (plus two
+more of each picked dispatch); they are tested against the CPU code but have not yet run on real WebGPU
+hardware. For WorkPacks, every build that carries an identity is credited by these audits only
+(Section~\ref{sec:oldprograms}); grid chat answers (Section~\ref{sec:client}) are credited per token, with a
+quarter of them double-checked.
+
+\section{Competitive Dispatch}\label{sec:race}
+
+Video and other latency-sensitive jobs need the \emph{last} pack fast. PlanetCompute can therefore send every
+WorkPack to $n$ machines at once, in the spirit of speculative backup tasks \citep{dean2004mapreduce}, and turn
+the redundancy into a competition (Algorithm~\ref{alg:race}):
+(1)~each pack goes to $n$ devices (default $n=5$) on $n$ distinct networks (IPv4 /24 or IPv6 /48 prefixes,
+where possible distinct autonomous systems) and accounts; (2)~a finisher sends the Merkle root $\rho_d$ of its result (plus a perceptual hash for GPU frames) on its own
+authenticated socket, which timestamps the finish, and answers a challenge for one random leaf of that tree;
+no result or root is ever shown to a volunteer; (3)~a result is accepted once $q=3$
+commitments from three networks match; (4)~the first finisher in the accepted cluster receives $\alpha R$
+(default $\alpha=\tfrac12$) and every other matching finisher shares $(1-\alpha)R$ as consolation; (5)~a
+non-matching result earns a strike, and three strikes ban the device and claw back what it helped accept. One
+Durable Object per project coordinates its packs, so its message order is the authoritative finishing order,
+with no distributed locks or clock comparisons.
+
+\paragraph{Lazy copiers.} Because the hybrid rule keeps crediting matching answers after acceptance, it invites
+a \emph{lazy copier}: a device that learns the accepted hash, from a colluder or from the consumer's side, and
+submits it without computing, to collect consolation credit (the lazy-participant problem of
+\citet{golle2001uncheatable}). Three rules close this: the dispatcher never shows a result, hash or root to any
+volunteer; credit follows the order in which roots arrive on each device's own socket, so a root cannot be
+replayed for another device; and the random-leaf challenge, answered within seconds, shows the device holds the
+whole result, not only its hash. The challenge is one extra round trip, so acceptance still happens at the
+$q$-th match. A copier must therefore receive the entire result from a colluder, which is the ``one computation,
+many submissions'' Sybil case of Table~\ref{tab:threats}, limited by network-distinct dispatch and account
+binding. Because a pack's total credit is fixed at $R$, copying never creates credit; it only takes
+consolation from honest finishers. The simulations below did not model copiers.
+
+\begin{proposition}[Speed-race exposure]\label{prop:speed}
+A fabricated answer costs nothing and arrives first. Without penalties, under first-$q$ acceptance with $n$
+simultaneous replicas, $P_{\text{wrong}} = \Pr[\mathrm{Bin}(n,f)\ge q] = \sum_{j=q}^{n}\binom{n}{j}f^{\,j}(1-f)^{n-j}$.
+\end{proposition}
+
+\noindent At $n=5$, $q=3$, $f=0.2$ this is $5.8\%$; the simulation measures $6.1\%$. For $n=2q-1$ it equals
+Equation~\eqref{eq:race}: with $2q-1$ replicas one of the two answers must reach $q$, so the race is the same event.
+
+\begin{algorithm}[ht]
+\caption{Competitive WorkPack dispatch with hybrid acceptance (abbreviated)}\label{alg:race}
+\begin{algorithmic}[1]
+\Require WorkPack $u$, replicas $n$, quorum $q$, credit $R$, winner share $\alpha$, deadline $t_{\mathrm{dl}}$
+\State send $u$ at once to $n$ devices on pairwise distinct networks and accounts
+\While{$\text{now}<t_{\mathrm{dl}}$ \textbf{and} some device has not reported}
+  \State receive Merkle root $(d,\rho)$; challenge one random leaf; if the answer fails, \textsc{Strike} $d$; else add $d$ to $V[\rho]$ \Comment{or SSIM for GPU frames}
+  \If{nothing accepted \textbf{and} $|V[\rho]|\ge q$} accept $h^\star\gets \rho$; deliver to the consumer only \Comment{low latency}\EndIf
+\EndWhile
+\State credit the earliest finisher in $V[h^\star]$ with $\alpha R$, the others in $V[h^\star]$ $(1-\alpha)R$ shared
+\State \textsc{Strike} every device that reported $\rho\ne h^\star$ \Comment{as in Algorithm~\ref{alg:validate}}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proposition}[Network diversity]\label{prop:net}
+If the adversary's devices lie on $S$ networks and each pack uses $n$ distinct networks, a pack holds at most
+$\min(n,S)$ adversarial replicas; hence if $S<q$, $P_{\text{wrong}}=0$.
+\end{proposition}
+
+\noindent This turns a cheap attack (many virtual machines in one data centre) into an expensive one; since
+residential proxies sell network diversity, the penalties remain.
+
+\paragraph{Matching AI outputs.} CPU packs match by SHA-256. GPU inference is not bit-reproducible across
+vendors, so GPU outputs match when perceptually identical, by SSIM \citep{wang2004ssim} against a threshold set
+per model. The same request run by the program on Linux with an RTX~4090 and on Windows with a Tesla~T4
+(Table~\ref{tab:xplat}) shows why both points matter: exact matching would reject honest work, and a single
+threshold is wrong, since 0.98 accepts both Stable Diffusion pairs but rejects both honest FLUX pairs, while
+a wrong picture scores near 0.3. Provisional thresholds are about 0.90 for FLUX.1 schnell and 0.97 for Stable
+Diffusion~1.5, carried in each model edition's metadata.
+
+\begin{table}[ht]
+\centering
+\caption{The same request on two machines (Linux + RTX 4090 vs Windows + Tesla T4): how alike the pictures are.
+Pixel differences on the 0--255 scale; SSIM on grey levels, 7$\times$7 window.}\label{tab:xplat}
+\resizebox{\linewidth}{!}{\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Picture (model, seed)} & \textbf{Pixels equal} & \textbf{Mean difference} & \textbf{Within 8 levels} & \textbf{SSIM} \\
+\midrule
+FLUX.1 schnell, cat (13)        & 4.3\,\% & 4.07 & 81.8\,\% & 0.941 \\
+FLUX.1 schnell, sign (14)       & 1.4\,\% & 4.43 & 79.2\,\% & 0.956 \\
+Stable Diffusion 1.5, lighthouse (1001) & 9.6\,\% & 1.17 & 98.3\,\% & 0.987 \\
+Stable Diffusion 1.5, apple (1002)      & 5.8\,\% & 1.61 & 97.3\,\% & 0.992 \\
+\midrule
+\emph{Different pictures, same model} (for contrast) & & & & 0.24--0.35 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\paragraph{Simulation.} We simulated $2{,}000$ devices with log-normal speeds (median compute time 1.0), $5\%$
+honest drop-out and $10^{-3}$ honest error; colluders ($f=0.2$, spread over 400 networks, the hardest case)
+answer instantly with a common fake. Each configuration processed $20{,}000$ WorkPacks
+(Table~\ref{tab:race}). \textbf{(i)}~The naive rule is exploitable as Proposition~\ref{prop:speed} predicts
+($6.09\%$ wrong). \textbf{(ii)}~Three-of-three unanimity silently re-issues mixed packs, so $1.80\%$ are wrong and
+no colluder is ever out-voted; spare replicas ($n>q$) are what expose cheaters. \textbf{(iii)}~With $n=5$ and
+penalties every colluder was banned and no wrong pack survived, for all three acceptance rules.
+\textbf{(iv)}~First-three-matching is fast ($1.10$) but credits the fastest quartile with $9.6\times$ what the
+slowest receives; waiting for all is fair ($2.7\times$) but slow ($1.90$); the \textbf{hybrid} rule, which
+accepts at the third match but keeps crediting later matching answers, is both ($1.10$, $2.7\times$).
+\textbf{(v)}~With the adversary on two networks, wrong acceptance was zero in every configuration. The cost is
+about 5 executions per pack against $3.0$--$3.3$ for sequential quorum with the same $q=3$ (Table~\ref{tab:sim}), so racing is for latency-sensitive jobs.
+
+\begin{table}[ht]
+\centering
+\caption{Competitive dispatch, $f=0.20$, $q=3$, adversary on 400 networks. ``Latency'' is time to
+acceptance in units of the median device's compute time. ``Fast/slow credit'' is the mean credit of
+the fastest quartile of honest devices divided by that of the slowest quartile.}\label{tab:race}
+\resizebox{\linewidth}{!}{\input{generated/race_table.tex}}
+\end{table}
+
+\section{Orchestration at a Million Devices}\label{sec:orch}
+
+The orchestrator connects consumers' jobs to volunteers' devices through Cloudflare Durable Objects
+\citep{cfdurable}: single-threaded, strongly consistent objects with their own storage. It is designed and
+simulated, not yet deployed. Large data never passes through an object; inputs, outputs and weights move by
+presigned URLs. The simulation refined it into five kinds of object: \textbf{lane shards}, each holding the
+WebSockets of about $10^3$ warm devices of one lane and running their capacity checks; sharded \textbf{lane
+directories}, each serving about 25 shards and knowing which jobs have packs waiting; a \textbf{planner} that
+moves devices between lanes every 15~s; a stateless \textbf{intake} Worker; and one \textbf{coordinator per
+job}.
+
+\paragraph{Method.} The objects' logic reads no clock and touches no network or storage, so a seeded
+discrete-event simulator (Node.js) runs the very classes that will be deployed, charging 0.5~ms per message plus
+0.02~ms per batched item, 2--10~ms between objects and about 40~ms to a device. Devices are 70\% browser CPU, 25\%
+browser WebGPU and 5\% desktop GPUs (12 or 24~GB), with log-normal speeds and sessions (median 40~minutes); about
+three share a network address; 2\% cheat (70\% of their packs wrong) and 0.2\% never answer. Five lanes (CPU,
+embeddings, an 8B LLM, SDXL, a 14B LLM) receive log-normal jobs (median 2{,}000 device-seconds) at half of
+capacity. 80\% of honest devices start with an earned reputation and cheaters start untrusted; new devices are
+never trusted alone; trusted ones are audited at 5\% or more; late packs are hedged; a
+caught cheater is banned and its recent packs re-run. \emph{Push} spreads packs over shards at start, \emph{steal}
+lets empty shards take half the busiest queue, and \emph{pull} lets shards with idle devices ask for batches.
+
+\begin{table}[ht]
+\centering
+\caption{Orchestrator simulation, one simulated hour each. ``Idle while queued'' is device time spent
+idle while packs for the same lane waited, in the worst lane. Times are time to finish, at the 99th
+percentile, for small ($<10^3$ device-seconds) and large ($\ge 3\times10^4$) jobs. All runs use pull
+unless named otherwise, with $10^4$ consumers, and precede the fixes described below; the million-device run with
+the fixes is described in the text.}\label{tab:orchsim}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}Xrrrrr@{}}
+\toprule
+\textbf{Scenario} & \textbf{Devices} & \textbf{Idle while} & \textbf{Stalled} & \textbf{Small} & \textbf{Large} \\
+ & \textbf{online} & \textbf{queued} & \textbf{jobs} & \textbf{p99 (s)} & \textbf{p99 (s)} \\
+\midrule
+Pull, $10^6$ volunteers (first run, before the fixes) & 916{,}831 & 0.26\% & 0 & 144 & 417 \\
+\midrule
+Pull, $10^5$ volunteers (baseline) & 91{,}563 & 0.22\% & 1 & 149 & 513 \\
+Push & 91{,}646 & \textbf{32.9\%} & \textbf{4{,}466} & 857 & 1{,}660 \\
+Steal & 91{,}667 & 1.47\% & 0 & 151 & 534 \\
+Deploy at 30 min, 30-s reconnect jitter & 90{,}973 & 0.51\% & 0 & 150 & 488 \\
+30\% of devices lost at once & 88{,}084 & 0.55\% & 0 & 151 & 464 \\
+Burst: $2{,}000$ jobs of $5\times10^4$ device-s & 91{,}261 & 0.41\% & 23 & 154 & 684 \\
+Only 40 network addresses & 91{,}632 & 0.32\% & 0 & 147 & 496 \\
+Demand at 90\% of capacity & 91{,}855 & 0.01\% & \textbf{6{,}319} & 1{,}869 & 2{,}623 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Results and faults found.} Push grid-locked: a third of device time was wasted because packs sat in
+shards whose devices had left; stealing repaired most of this and pull removed it (Table~\ref{tab:orchsim}). The
+simulator found seven faults before any deployment, among them a single directory per lane that was 67\% busy at
+$10^5$ devices (now sharded), 95\% of pull requests coming back empty, a livelock of about 2{,}500 requests a
+second, and about $1.2\times10^4$ multi-gigabyte model downloads an hour (moves now prefer devices that hold the
+model). Three later fixes: \emph{sleeper cheaters}, which earn trust and then cheat, had $5{,}278$ wrong answers
+accepted in an hour at $10^5$ devices; with audits that fall with a device's record but never below 5\%, and
+re-running a caught device's last 256 packs, accepted wrong answers fell to $2{,}031$, of which $1{,}947$ were
+corrected after delivery and $84$ never were (all from sleepers not yet caught when the hour ended); a further
+$2{,}049$ were fixed before delivery. Admission now refuses a job whose estimated wait exceeds five minutes (burst stalls
+fell from 23 to 3, while refused submissions rose from 2{,}815 to 7{,}975), and spare copies are cancelled on acceptance. Still open: under 90\% demand, $4{,}633$
+admitted jobs still stalled (from $6{,}319$).
+
+\paragraph{Faults in the platform.} With 1\% of requests between objects refused, 0.2\% of WebSocket messages
+lost, 0.5 crashes per object per hour and 0.2\% of replies lost after delivery, three designs were compared at
+$20{,}000$ devices (Table~\ref{tab:faults}). The simple design needs no queue service and no load balancer, only
+four rules: keep a message until acknowledged and resend with growing pauses; give every message an ID and drop
+repeats; save state before acknowledging; re-issue a long-overdue copy.
+
+\begin{table}[ht]
+\centering
+\caption{The orchestrator under faults ($20{,}000$ devices, one hour).}\label{tab:faults}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}Xrrrr@{}}
+\toprule
+\textbf{Design} & \textbf{Jobs finished} & \textbf{Jobs lost} & \textbf{Credit wrong} & \textbf{Processed twice} \\
+\midrule
+Nothing retried & $4{,}360$ of $6{,}573$ & 493 & $10{,}202$ units missing & 0 \\
+Retries without message IDs & $6{,}167$ of $6{,}584$ & 113 & $1{,}123$ units paid twice & $6{,}095$ \\
+Simple design (four rules) & $6{,}426$ of $6{,}637$ & 0 & 0 of $1{,}051{,}195$ & 0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{One million devices, and the cost.} In one simulated hour with the fixes above, at about a million
+devices (1{,}151{,}633 came and went, 917{,}629 online on average) and $10^4$ consumers, 253{,}881 of
+261{,}125 jobs finished within the hour and the rest were still running; none was refused or stalled;
+186{,}057 cheating answers were caught and none was delivered uncorrected; and the busiest of 42 lane
+directories peaked at 411 messages a second. This run had the 2\% ordinary cheaters of the Method; sleeper
+cheaters were tested only at $10^5$ devices (above), where 84 wrong answers remained. It is a single run with one
+seed. The cost runs of Table~\ref{tab:millioncost} were made separately, with the same seed and cost accounting
+added, so their job counts differ slightly from this run's. Priced at list rates around the clock, this original design costs
+about \$111.54 an hour with volunteers' status reports sent on the open WebSocket every five minutes (\$195.70
+with reports to the website each minute, as first built), because about 8{,}700 objects stay awake,
+objects exchange about four messages per WorkPack, and the ledger takes a write per credited device per minute
+(Table~\ref{tab:millioncost}). Against this, with the same five-minute reports (\$111.54 is the run re-priced with them), a
+\textbf{low-cost design} changes five things, each a simulator switch: the ledger rolled up hourly, job groups instead of one object per job, shards of $10^4$ devices,
+batching of messages between objects within 250~ms, and multi-pack leases for trusted devices. Its first million-device
+run delivered 4 wrong results uncorrected, because cheaters holding leases filled packs up to the copy limit,
+which were then accepted without enough matching answers; never accepting a pack without its matching answers,
+and leasing to trusted devices only (the first run also leased to untrusted ones), fixed it. The fixed design costs about \$9.80 an hour, $11.4$ times less
+than the original with the same status reports; the price is latency (small jobs finish in a median of 226~s instead of 74~s) and idle capacity: in the CPU lane
+devices sat idle while packs waited 33\% of the time (the original design: under 0.3\%), because leases and
+batching hold work in a few places, as push did. It suits batch work, and the idle lane is the next fault to fix.
+
+\begin{table}[ht]
+\centering
+\caption{One simulated hour at about a million volunteer devices and $10^4$ consumers (demand at half of
+capacity), at list prices. Same seed in all three runs, which are separate from the run described in the
+text.}\label{tab:millioncost}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}Xrrr@{}}
+\toprule
+ & \textbf{Original} & \textbf{Low-cost,} & \textbf{Low-cost,} \\
+ & \textbf{design} & \textbf{first run} & \textbf{with the fix} \\
+\midrule
+Cost/hour, reports on the WebSocket every 5 min & \$111.54 & \$9.82 & \$9.80 \\
+Objects awake on average & 8{,}743 & 213 & 214 \\
+Requests between objects per second (billed) & 49{,}458 & 11{,}135 & 11{,}483 \\
+Device messages per second & 20{,}432 & 5{,}984 & 6{,}962 \\
+Ledger writes per second & 14{,}686 & 683 & 579 \\
+Jobs submitted / finished within the hour & 261{,}385 / 254{,}027 & 261{,}491 / 230{,}708 & 261{,}681 / 236{,}650 \\
+Jobs refused / stalled ($>600$~s) & 0 / 0 & 0 / 281 & 0 / 76 \\
+Small jobs: time to finish, median / 99th pct. & 74 / 152~s & 249 / 767~s & 226 / 599~s \\
+First result to the consumer, median / 99th pct. & 7 / 21~s & 58 / 262~s & 51 / 210~s \\
+Extra copies (quorum, audits, hedges) & 22.5\% & 40.3\% & 30.7\% \\
+Accepted without enough matching answers & 0 & 680 & 0 \\
+Wrong answers delivered and never corrected & 0 & 4 & 0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{What it does not show, and what is next.} The simulation does not measure Cloudflare's real latency,
+real model speeds or real browsers and programs; device behaviour and cheating are modelled. The steps from
+simulation to a real test are in Table~\ref{tab:exp} (E9). Clients must reconnect with random delay after an update:
+without it, $10^5$ simulated devices reconnected at about $9\times10^4$ connections a second, against about
+$3\times10^3$ with 30~s of jitter. The design is not tied to Cloudflare: its logic is written against five small
+interfaces (actor runtime, object store, database, mailer, secrets), with open-source equivalents on plain Ubuntu
+servers, which then need their own load balancers and a durable message queue.
+
+\section{Threat Model and Privacy}\label{sec:threat}
+
+Table~\ref{tab:threats} lists the main threats. The Coinhive lesson
+\citep{eskandari2018cryptojacking,konoth2018minesweeper} is that background compute was condemned for being
+\emph{covert}; the dispatcher refuses devices without recorded consent, and both hosts always show what runs and
+a pause control.
+
+\begin{table}[ht]
+\centering
+\caption{Threats and mitigations.}\label{tab:threats}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.6cm}X@{}}
+\toprule
+\textbf{Threat} & \textbf{Mitigation} \\
+\midrule
+Malicious job or hostile model file & No-import WASM in the browser; WebGPU shader validation; desktop engines in their own processes in the OS sandbox (models read-only, no network, no other programs, no sign-in) \\
+Tampered module or update          & Every build signed with Ed25519 and checked before install (third-party modules checked by SHA-256 against a signed manifest: specified); every build signed with a key kept off the website, storage and build service; servers install only signed builds; installers to be code-signed \\
+Stolen sign-in                     & No passwords (one-time codes by email); email on a sign-in from a new browser or country; list of sign-ins with sign-out; a computer's link bound to its device key \\
+Leaked keys; exposed prompts       & Keys held as encrypted secrets of the website, with rotation; no prompt written into shared files \\
+Free file storage                  & Only files the account's program made (SHA-512 registry), only PNG/WebM at the program's sizes, daily limits per account and network \\
+Lazy copier (submits another's answer) & Results never shown to volunteers, roots bound to each device's socket, a random Merkle-leaf challenge, fixed credit per pack (Section~\ref{sec:race}) \\
+Cheating volunteer, fast fakes     & Built: commit-then-random-audit, Freivalds checks, repeated prompts, strikes and bans. Simulated: quorum, spare replicas $n>q$, network-distinct quorum, retroactive invalidation and clawback (Sections~\ref{sec:verify}, \ref{sec:race}) \\
+Sybil devices; one computation, many submissions & Account-bound device keys, rate limits on new accounts; per-account replica exclusion (specified) (a group that computes once returns a correct result but defeats independence) \\
+Old or modified program keeps earning & Credit and transfer checks only on the server; builds with an identity credited by audits only; a minimum build for earning (Section~\ref{sec:oldprograms}) \\
+Data exposure to volunteers        & Privacy tiers (Table~\ref{tab:privacy}) \\
+Perceived cryptojacking; antivirus & Explicit opt-in, visible indicator, one-click pause, open-source client, no silent auto-start, conservative default caps; code signing and vendor allow-list submissions planned \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{What volunteers can see.} Encryption in transit is easy; computing on encrypted data at speed is not.
+Fully homomorphic encryption remains orders of magnitude slower for neural networks, multi-party computation needs
+round trips per layer, and practical attested GPU enclaves exist only on server hardware. PlanetCompute therefore offers
+\emph{rotation obfuscation}: for secret orthogonal $Q,R$, $x'=Rx$ and $W'=QWR^{\top}$ give $W'x'=Q(Wx)$, and in
+transformers the rotation can be folded into all weights in advance at no run-time cost
+\citep{ashkboos2024slicegpt,ashkboos2024quarot}. A longer key does not help against a public model: orthogonal
+Procrustes recovers $R$ from the published and rotated embeddings in one SVD. What helps is private weights,
+decoders kept on the consumer's side, and limiting the blast radius: $G$ key groups, keys changed every period
+$T_k$, and fragments only, so one broken key exposes fragments of about 1\% of one lane for one day with $G=100$.
+Every job declares a tier
+(Table~\ref{tab:privacy}); PlanetCompute does not claim that volunteers cannot decode Protected jobs.
+
+\begin{table}[ht]
+\centering
+\caption{Privacy tiers.}\label{tab:privacy}
+\small
+\begin{tabularx}{\linewidth}{@{}p{2.1cm}p{3.3cm}Xp{1.3cm}@{}}
+\toprule
+\textbf{Tier} & \textbf{Computed by} & \textbf{What a volunteer can see} & \textbf{Cost} \\
+\midrule
+Public & Any browser or app & The data itself; only non-confidential jobs are eligible & Lowest \\
+Protected & Desktop app only & Rotated numbers in fragments, in memory only, encrypted in transit; a determined expert with the public model could decode one key's share. Not encryption during processing. & Low \\
+Confidential & Attested server TEEs, or FHE for small models & Nothing, within the guarantees of the attested hardware & Higher \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Consent, Cost and Safety for Volunteers}\label{sec:volunteer}
+
+\paragraph{What the volunteer sees.} Nothing runs until the volunteer ticks a consent box, which names the
+shared cores, caps, status reports and that electricity and wear are the volunteer's, and presses \emph{Start
+computing}; a new session needs new consent. Whenever the console is closed, a status light (Running, Idle,
+Paused, Stopped) with PlanetCompute's own CPU, GPU and memory use and the credit received stays in the page
+header; \emph{Pause} keeps the session, and exit asks for confirmation. The program shows the same console
+in a window and keeps a tray icon. Table~\ref{tab:signals} shows what each host can observe and uses today.
+
+\begin{table}[ht]
+\centering
+\caption{Observability of the eligibility predicate. \cmark\ yes, \pmark\ partly, \xmark\ no.}\label{tab:signals}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Signal} & \textbf{Browser can observe} & \textbf{Desktop can observe} & \textbf{Used today} \\
+\midrule
+Consent              & \cmark\ (in-page) & \cmark & used \\
+Cores, CPU cap       & \cmark & \cmark & used \\
+User idle            & \pmark\ Idle Detection API (Chromium) & \cmark\ OS idle time & specified \\
+AC power             & \pmark\ Battery Status API (Chromium) & \cmark\ OS power source & specified \\
+Allowed hours        & \cmark & \cmark & specified \\
+Thermal limit        & \xmark & \pmark\ where sensors exist & specified \\
+Other-process load   & \pmark\ Compute Pressure (Chromium) & \cmark\ per-process CPU & specified \\
+Runs when closed     & \xmark & \cmark\ tray & used \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{What it costs the volunteer.} The marginal cost is electricity, $\Delta P\cdot h$ for extra draw
+$\Delta P$ over $h$ hours (Table~\ref{tab:econ}; assumed values, to be measured, E6 in
+Table~\ref{tab:exp}). Electricity and wear are the volunteer's: the terms, the consent text, the program's agreement
+box and \texttt{--help} all say that sharing compute uses electricity and may add to the wear of fans,
+batteries, processors and graphics cards, that these costs are not reimbursed, and that PlanetCompute.ai is not
+liable for them.
+PlanetCompute is not a source of income; a volunteer's electricity buys credit redeemed as processing time on
+the grid. Every model licence in the library allows redistribution from PlanetCompute's own storage, with
+conditions (Table~\ref{tab:econ}); non-commercial models are not added.
+
+\begin{table}[ht]
+\centering
+\caption{Left: illustrative extra electricity in one 8-hour night. Right: licences of the library's models (a
+reading of the licences, to be confirmed by counsel before launch).}\label{tab:econ}
+\small
+\begin{tabular}[t]{@{}lrr@{}}
+\toprule
+\textbf{Device} & $\Delta P$ & \textbf{Energy} \\
+\midrule
+Laptop CPU, all cores & 25 W & 0.20 kWh \\
+Desktop CPU, all cores & 80 W & 0.64 kWh \\
+Desktop discrete GPU & 200 W & 1.60 kWh \\
+\bottomrule
+\end{tabular}\hfill
+\begin{tabular}[t]{@{}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{5.6cm}@{}}
+\toprule
+\textbf{Licence} & \textbf{Library models; conditions} \\
+\midrule
+Apache-2.0 & Qwen, FLUX.1 schnell, Z-Image Turbo, Wan~2.1, T5/umt5; ship licence, mark changes \\
+OpenRAIL-M & Stable Diffusion 1.5; pass on its use restrictions \\
+MIT & CLIP-L, DeepSeek-R1 distillation; keep notice \\
+Llama 3.3 Community & DeepSeek-R1-Distill-Llama-70B; ``Built with Llama'', Meta's use policy \\
+Non-commercial & none (e.g.\ FLUX.1 dev): not added \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{One Program for Both Sides: \texttt{planetCompute}}\label{sec:client}
+
+\texttt{planetCompute} is one Rust and Tauri~2 \citep{tauri2} program with llama.cpp \citep{llamacpp} linked in. It
+\textbf{contributes} when idle (on a desktop it shows the same volunteer console as the website; on a server,
+\texttt{--headless} runs a native engine that computes the same CPU WorkPacks, checked against shared test
+vectors on every build) and \textbf{harnesses} when its owner needs answers: a local OpenAI-style API
+(\texttt{/v1/chat/completions}, \texttt{/v1/images/generations}) for chat with llama.cpp and for pictures and
+video with stable-diffusion.cpp \citep{sdcpp}, run as a separate process. The library holds open-weight models,
+each file checked by SHA-256 against its publisher's, so every device that runs one model ID runs the same bytes
+and answers can be compared. Jobs run on this computer, or in the PlanetCompute pool,
+supplied by contributors' programs and, for now, by the operator's in-house SherpaHubs.
+
+\paragraph{Grid, step one.} A chat job sent to \texttt{POST /v1/jobs} goes to an idle volunteer program that holds
+the model; it runs at temperature~0 with a seed chosen by the website, and with probability $0.25$ a second
+program runs it too and the answers must match exactly. A live load test with five scripts and two program copies
+first saw answers of 15--110~s; the cause was llama.cpp using every hardware thread on a loaded server, and
+limiting grid jobs to the shared cores fixed it (Table~\ref{tab:real}); the first double-checked job agreed.
+
+\paragraph{A sandboxed native engine.} A job carries a model ID and inputs, never code; but a model file from
+outside could exploit a parser bug. The program therefore never opens a model itself: a separate \emph{model
+engine} and the image engine run in the operating system's sandbox (Landlock and seccomp on Linux, a sandbox
+profile on macOS, an AppContainer in a one-process job on Windows), may read only the models and their own folder,
+write only the pictures folder (the model engine writes nothing), and have no network, no other programs and no
+sign-in. \texttt{planetCompute --sandbox-check} makes each engine try to read outside its folders, list the home
+folder, write outside, connect to the internet and start a shell; every attempt must fail, and CI runs it on all
+five builds.
+
+\paragraph{First measurements.} Table~\ref{tab:real} collects chat on a rented RTX~A4000, pictures and video,
+the grid-job fix and the eight-hour run of an in-house SherpaHub against the load scripts; on the A4000 the first token arrived after
+0.10~s and library downloads ran at 17--18~MB/s. Pictures and video ran on an RTX~4090 under Linux and on a
+Tesla~T4 under Windows (\texttt{planetCompute.exe}). All ten RTX~4090 jobs ran on the GPU
+at 68--100\% use with no CPU fallback; the T4 took 2.9--4.2 times as long for pictures and 6 times as long for the
+clip; on a 4-core CPU the CPU build made a 256$\times$256, 4-step picture in 62.9~s (Table~\ref{tab:real}). On the virtual GPU of an
+Apple M1 CI runner Metal fails and the CPU made the picture (46~s).
+
+\begin{table}[ht]
+\centering
+\caption{Measured on real machines: the same program on rented servers and the operator's live server. Pictures
+and video through the Harness API (Vulkan builds); the first job of each model includes loading it, ``then'' is
+every later job; GPU memory as used on the RTX~4090. The CPU build on the T4 machine's 4 cores made a
+256$\times$256, 4-step Stable Diffusion 1.5 picture in 62.9~s.}\label{tab:real}
+\small
+\begin{tabularx}{\linewidth}{@{}Xrr@{}}
+\toprule
+\multicolumn{3}{@{}l}{\textit{Chat, RTX A4000 (16~GB), 4-bit, all layers on the GPU in the Vulkan build: tokens/s}} \\
+ & \textbf{Vulkan build} & \textbf{CPU build} \\
+Qwen3 4B Instruct & 83.1 & 23.6 (3.5$\times$) \\
+Qwen2.5-Coder 7B  & 58.9 & 17.4 (3.4$\times$) \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Pictures and video: seconds}} \\
+ & \textbf{RTX 4090, Linux} & \textbf{Tesla T4, Windows} \\
+FLUX.1 schnell 4-bit, 1024$\times$1024 / 1024$\times$768, 4 steps (12--14~GB) & 38.7, then 9.4--12.0 & 111.4, then 36.8 \\
+Stable Diffusion 1.5 8-bit, 512$\times$512, 20 steps (4~GB) & 21.2, then 4.4--4.5 & 89.8, then 15.9 \\
+Wan 2.1 T2V 1.3B 8-bit, 2~s clip, 832$\times$480, 33 frames, 20 steps (10~GB) & 87.8 and 77.2 & 492.5 \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Grid jobs, five scripts to two program copies (four shared cores each, Qwen2.5 0.5B, 4-bit)}} \\
+ & \textbf{Every core} & \textbf{Shared cores} \\
+Run time of an answer, median (slowest) & 36.8 (109.5)~s & 0.8 (1.9)~s \\
+Wait in the queue / total time per job, medians & 49.4 / 110.2~s & 0.03 / 2.2~s \\
+Server load (16 threads) & about 30 & about 9 \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Eight hours side by side, 30 October 2026, 07:45--15:42 UTC (chat jobs, qwen2.5-0.5b)}} \\
+ & \textbf{5 load scripts} & \textbf{1 SherpaHub} \\
+Chat jobs sent (an hour) & 5{,}769 (730) & 4{,}384 (555; set 600) \\
+Answered & 99.9\% & 99.8\% \\
+Time to answer, median / 95th percentile & 3.2 / 25~s & 3.5 / 41~s \\
+Computers that answered & the same 5 & the same 5 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+
+
+\subsection{Programs That Are Never Updated}\label{sec:oldprograms}
+
+Many people install a program once and never update it. Everything that decides credit lives on the website, so
+an old copy cannot pay out wrongly; what was missing was knowing which build is which. Each build now carries its
+commit and the commit's time in Unix seconds, sent in the User-Agent and in every status report. Once a day the
+program checks for a newer build and shows a notice that never blocks local use. Two website settings name the
+oldest build that still earns and a mode: in \emph{warn} mode older programs are flagged and their owners emailed
+once; in \emph{enforce} mode they earn nothing, while sign-in, balances and local use are never affected. For WorkPacks, every
+build with an identity is credited only through commit-then-random-audit, and a modified copy that hides its
+identity looks like an old build, so a modified program has no third path.
+
+\subsection{Tests}\label{sec:tests}
+
+Every test is written up step by step, with results, in \texttt{docs/TESTING.md} in the repository;
+Table~\ref{tab:tests} lists the most important ones.
+
+\begin{table}[ht]
+\centering
+\caption{Main automated and live tests (automated unless stated).}\label{tab:tests}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{2.8cm}X@{}}
+\toprule
+\textbf{What} & \textbf{Where} & \textbf{Result} \\
+\midrule
+Harness, real model & CI, Windows, macOS, Linux & 23 of 23 checks per platform: download, hash, question, streamed answer \\
+Maths-pack kernels (stage 1) & EPYC server; five builds & program 7 of 7, message format 4 of 4, browser 33 of 33 (same hashes over 200 shapes); \texttt{--workpack-check} on every build \\
+Broker and batches (stage 3) & local Workers runtime, headless browser, rented server & broker 29 of 29, device code 7 of 7, end to end 8 of 8 (liars banned, a killed SherpaHub kept its work); prompt batches 20 of 20 \\
+Commit and random audit & website code, test database & 23 of 23: honest leases pass, a wrong pack is caught, late or missing commit earns nothing without a strike, three strikes hold, GPU sum-tree proofs checked \\
+Grid jobs & website code; live & 11 of 11 and 16 of 16 (double-check agree and disagree, queueing, priority); live in Table~\ref{tab:real} \\
+Engine sandbox & all five CI builds & 16 of 16 on each, nothing skipped; chat, pictures and video then made through the sandboxed engines \\
+Signed builds & the server agent's check & 7 of 7: real signatures pass; another build, one changed bit, another key, empty signatures fail; RFC~8032 vector \\
+Build identity and minimum for earning & website, program, Rust tests; live & 17 of 17, 9 of 9 and 26 of 26: old builds credited, flagged or unpaid by mode; new builds and browsers unaffected; live copies report the new build and pass audits \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Related Work}\label{sec:related}
+
+\begin{table}[ht]
+\centering
+\caption{PlanetCompute versus related systems, from public descriptions. \cmark\ present, \xmark\ absent,
+\pmark\ partial or historical; for PlanetCompute, \pmark\ means designed (and, where stated, simulated) but not yet deployed.}\label{tab:related}
+\small
+\resizebox{\linewidth}{!}{\begin{tabular}{@{}lcccccccccc@{}}
+\toprule
+\textbf{System} & \textbf{\shortstack{Zero-\\install}} & \textbf{\shortstack{Native\\overnight}} & \textbf{\shortstack{Same results,\\both hosts}} & \textbf{\shortstack{No native\\job code}} & \textbf{\shortstack{GPU}} & \textbf{\shortstack{Frame-par.\\AI packs}} & \textbf{\shortstack{Race +\\consolation}} & \textbf{\shortstack{Network-\\distinct q.}} & \textbf{\shortstack{Validated\\credit}} & \textbf{\shortstack{Consent\\by design}} \\
+\midrule
+BOINC \citep{anderson2020boinc}           & \xmark & \cmark & \xmark & \xmark & \cmark & \pmark & \xmark & \pmark & \cmark & \cmark \\
+Folding@home \citep{beberg2009folding}    & \pmark & \cmark & \xmark & \xmark & \cmark & \xmark & \pmark & \xmark & \pmark & \cmark \\
+Gridcoin \citep{gridcoin}                 & \xmark & \cmark & \xmark & \xmark & \cmark & \xmark & \xmark & \xmark & \cmark & \cmark \\
+Golem \citep{golem2016}                   & \xmark & \cmark & \xmark & \pmark & \cmark & \pmark & \xmark & \xmark & \pmark & \cmark \\
+Salad \citep{salad}                       & \xmark & \cmark & \xmark & \pmark & \cmark & \pmark & \xmark & \xmark & \pmark & \cmark \\
+Petals \citep{borzunov2023petals}         & \xmark & \cmark & \xmark & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark & \cmark \\
+Pando \citep{lavoie2019pando}             & \cmark & \xmark & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark & \xmark & \cmark \\
+Gray computing \citep{pan2015gray}        & \cmark & \xmark & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark & \xmark & \pmark \\
+Coinhive (2017--19)                       & \cmark & \xmark & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark & \xmark & \xmark \\
+\midrule
+\textbf{PlanetCompute}                    & \cmark & \cmark & \cmark & \cmark & \cmark & \pmark & \pmark & \pmark & \cmark & \cmark \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Table~\ref{tab:related} summarises the comparison. BOINC \citep{anderson2004boinc,anderson2020boinc} is the closest prior work and the source of PlanetCompute's
+validation vocabulary, but ships native executables per platform with its account's privileges, has no browser
+host, and can require distinct users or hosts per quorum, not distinct networks. Gray computing
+\citep{pan2015gray} and Pando \citep{lavoie2019pando} computed in browsers with JavaScript, and WebAssembly
+remains slower than native code \citep{jangda2019notsofast}; Golem \citep{golem2016} and Salad \citep{salad} sell
+consumer compute through VMs or containers; Petals \citep{borzunov2023petals} and
+\citet{ryabinin2020moe} serve or train large models across peers. Backup tasks \citep{dean2004mapreduce} and
+split-frame rendering have precedents; no surveyed system combines these ideas for AI inference on untrusted
+consumer machines with Freivalds-checked maths packs.
+
+\section{Open Challenges and Known Gaps}\label{sec:gaps}
+
+\begin{table}[!htb]
+\centering
+\caption{Hypotheses, planned experiments and the path from simulation to a real test, with status on 31 October 2026.}\label{tab:exp}
+\footnotesize
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+ & \textbf{Hypothesis or test} & \textbf{Status} \\
+\midrule
+H1 & Browser WebAssembly reaches half of native throughput on the CPU kernels & int8 maths kernel on one AMD EPYC core: 24.7 against 57.9 billion operations/s (0.43): not met on one core; rest open \\
+H2, H3 & Background tabs lose over half their throughput on a major browser, the tray program nothing; at $\gamma=0.2$ the foreground latency penalty is below 5\% & Open \\
+H4 & The two hosts give bit-identical results & Met for the built-in kernels (every build); third-party modules wait for the byte ABI \\
+H5 & Browser WebGPU is within 30\% of native wgpu & Waits for desktop GPU WorkPacks (planned) \\
+H6 & Frame-parallel packs cut time to video $10\times$ with 50 machines & Open (Figure~\ref{fig:dag} is a design) \\
+H7 & Frames from different GPUs match at SSIM $\ge0.98$ & Partly: NVIDIA types 0.986--0.998 (SDXL); RTX~4090 vs T4 0.987--0.992 (SD~1.5), 0.941--0.956 (FLUX) \\
+E4, E8 & Validation and the race, live, with injected cheaters & Simulated (Tables~\ref{tab:sim}, \ref{tab:race}); live runs open \\
+E6 & Energy per validated unit per host (RAPL, powermetrics) & Open; Table~\ref{tab:econ} is assumed \\
+E9 & Orchestrator: (1)~simulation; (2)~the same classes as Durable Objects against up to $10^6$ devices generated inside Cloudflare, plus 5{,}000--20{,}000 real WebSockets; (3)~real programs on varied machines and GPUs; (4)~a soft launch & (1) done (Tables~\ref{tab:orchsim}--\ref{tab:millioncost}); (2)--(4) next \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+(1)~\textbf{Demand:} parallel, small-input, deadline-tolerant, non-confidential jobs.
+(2)~\textbf{Mobile:} iOS forbids long background compute.
+(3)~\textbf{Sybil resistance} beyond account binding without intrusive identity checks. (4)~\textbf{GPU
+determinism:} tolerances must be re-measured in each runtime and for AMD, Intel, Apple and other NVIDIA GPUs.
+(5)~\textbf{Not yet built}, beyond Table~\ref{tab:exp}: a live rerun of the split job with several packs in
+flight (built and simulated), stage~4 maths packs, SherpaHubs on volunteers' computers,
+GPU leases on real WebGPU hardware, and strikes for programs whose grid answers disagree. The Windows and Mac downloads are not yet
+code-signed, Metal fails on the test Mac's virtual GPU, and the native contributor runs CPU WorkPacks only.
+
+\section{Conclusion}
+
+PlanetCompute is designed to turn idle consumer machines into one compute grid for AI inference, with every
+credit redeemable as free processing time on it; so far it has run only on the operator's servers. It cuts the work, not the model; specifies GPU inference audits whose offline cost is a few
+percent; lets browsers with no model compute exactly checked maths packs (shown in a test on a local broker; the two live
+split jobs ran between program copies); shows in simulation that racing is safe with spare replicas,
+network-distinct quorums and retroactive clawback, with a hybrid rule that is both fast and fair; and, at a million
+simulated devices with 2\% ordinary cheaters, delivered no uncorrected wrong answer in the final designs. Live tests with real volunteers,
+the audits inside the program and the experiments of Table~\ref{tab:exp} come next. The
+same WorkPacks run in a browser tab and in \texttt{planetCompute}, one program that both contributes a machine
+and serves models on it.
+
+
+
+\subsection*{Code and Resources}
+All the code, scripts and test cases are in the project's GitHub repository:
+\begin{center}\url{\coderepo}\end{center}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\vfill
+\begin{center}
+\rule{0.5\linewidth}{0.4pt}\\[4pt]
+\small \paperaffil\ \textbullet\ \texttt{\paperemail}\\
+\url{\coderepo}
+\end{center}
+
+\end{document}

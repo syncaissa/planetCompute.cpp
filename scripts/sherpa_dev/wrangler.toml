@@ -1,0 +1,12 @@
+# Test-only (docs/TESTING.md test 65): `npx wrangler dev` here runs the site's SherpaBroker locally. Never deployed.
+name = "sherpa-dev-test"
+main = "entry.js"
+compatibility_date = "2026-10-20"
+
+[[durable_objects.bindings]]
+name = "SHERPA"
+class_name = "SherpaBroker"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SherpaBroker"]

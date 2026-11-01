@@ -1,0 +1,40 @@
+#!/bin/bash
+# planetCompute hungrywolves: everything lives in this folder (nothing outside it).
+#   ./wolvesctl start [N] | stop | restart [N] | status | logs | stats
+# N wolves (1-5, default WOLVES in etc/wolves.env), each bin/wolf.py <n> under a loop that starts it again 5 s after
+# it stops; their log lines go to logs/wolf<n>.log, one JSON line per job to logs/wolf<n>.jsonl.
+D="$(cd "$(dirname "$0")" && pwd)"
+PY=$(command -v python3)
+DEF=$(grep -E '^WOLVES=' "$D/etc/wolves.env" 2>/dev/null | cut -d= -f2); DEF=${DEF:-2}
+alive() { [ -s "$D/run/wolf$1.pid" ] && kill -0 "$(cat "$D/run/wolf$1.pid")" 2>/dev/null; }
+start() {
+  n=${1:-$DEF}; [ "$n" -ge 1 ] 2>/dev/null && [ "$n" -le 5 ] || { echo "1 to 5 wolves"; exit 1; }
+  for i in $(seq 1 "$n"); do
+    alive "$i" && { echo "wolf $i already running"; continue; }
+    setsid bash -c "while true; do HOME='$D/data' '$PY' '$D/bin/wolf.py' $i >> '$D/logs/wolf$i.log' 2>&1; sleep 5; done" < /dev/null > /dev/null 2>&1 &
+    echo $! > "$D/run/wolf$i.pid"; echo "wolf $i started (pid $!)"
+  done
+}
+stop() { for i in 1 2 3 4 5; do alive "$i" && { kill -- -"$(cat "$D/run/wolf$i.pid")" 2>/dev/null; echo "wolf $i stopped"; }; rm -f "$D/run/wolf$i.pid"; done; }
+case "$1" in
+  start) start "$2" ;;
+  stop) stop ;;
+  restart) stop; sleep 1; start "$2" ;;
+  status) for i in 1 2 3 4 5; do alive "$i" && echo "wolf $i running (pid $(cat "$D/run/wolf$i.pid"))"; done; true ;;
+  logs) for f in "$D"/logs/wolf*.log; do [ -f "$f" ] && { echo "== $f"; tail -n 5 "$f"; }; done ;;
+  stats) "$PY" - "$D" <<'PY'
+import glob, json, sys
+rows = [json.loads(l) for f in glob.glob(sys.argv[1] + "/logs/wolf*.jsonl") for l in open(f) if l.strip()]
+ok = [r for r in rows if r["ok"]]
+ms = sorted(r["total_ms"] or r["ms"] for r in ok)
+p = lambda q: ms[min(len(ms) - 1, int(q * len(ms)))] if ms else 0
+print(f"jobs {len(rows)}  answered {len(ok)}  failed {len(rows) - len(ok)}  checked {sum(1 for r in ok if r['checked'])}  disagreed {sum(1 for r in ok if r['checked'] and r['agree'] is False)}")
+print(f"total ms p50 {p(.5)}  p90 {p(.9)}  tokens out {sum(r['tokens'] or 0 for r in ok)}  WU {round(sum(r['wu'] or 0 for r in ok), 6)}")
+errs = {}
+for r in rows:
+    if not r["ok"]: errs[r["error"][:80]] = errs.get(r["error"][:80], 0) + 1
+for e, n in sorted(errs.items(), key=lambda x: -x[1])[:5]: print(f"  failed x{n}: {e}")
+PY
+  ;;
+  *) echo "usage: $0 start [N]|stop|restart [N]|status|logs|stats" ;;
+esac

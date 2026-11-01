@@ -1,0 +1,16 @@
+test image::tests::reads_progress ... ok
+test sherpa_prompts::tests::a_device_that_reconnects_keeps_its_prompt_and_delivers_it ... ok
+test sherpa_prompts::tests::device_leaving_gives_the_prompt_back_and_lonely_checks_end ... ok
+test image::tests::sizes_between_multiples_are_made_larger ... ok
+test sherpa_prompts::tests::every_prompt_once_and_checks_on_another_device ... ok
+test sherpa_prompts::tests::failures_retry_elsewhere_then_fail ... ok
+test contribute::tests::leases_match_the_server ... ok
+test webshare::tests::multipart_body ... ok
+test webshare::tests::shrink_averages ... ok
+test image::tests::cuts_png_to_the_size_asked_for ... ok
+test webshare::tests::the_tag_goes_bottom_right ... ok
+test sherpa_prompts::tests::pictures_in_parts_and_compared ... ok
+test contribute::tests::matches_the_server ... ok
+test webshare::tests::a_small_picture_keeps_its_size ... ok
+test webshare::tests::three_webp_versions_of_an_instagram_picture ... ok
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s

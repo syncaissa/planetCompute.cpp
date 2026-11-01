@@ -1,0 +1,16 @@
+{
+ "info": {
+  "gpu": "NVIDIA A100-SXM4-80GB",
+  "mem_gb": 79.3,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.0"
+ },
+ "B3": {
+  "download_s": 71.31085729598999,
+  "bytes": 28420603092,
+  "load_s": 11.338430166244507,
+  "cpu_offload": false
+ },
+ "B1_chunk_49f_704x480_30steps_s": 6.1045777797698975
+}

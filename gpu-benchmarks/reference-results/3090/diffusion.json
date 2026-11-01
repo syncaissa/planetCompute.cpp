@@ -1,0 +1,46 @@
+{
+ "info": {
+  "gpu": "NVIDIA GeForce RTX 3090",
+  "mem_gb": 23.6,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.6"
+ },
+ "B3": {
+  "download_s": 89.85512518882751,
+  "bytes": 7108524699,
+  "load_to_gpu_s": 1.3746204376220703
+ },
+ "B1_batch1": {
+  "s_per_batch": [
+   9.376766443252563,
+   9.371324300765991,
+   9.36970329284668
+  ],
+  "s_per_image": 9.36970329284668,
+  "s_per_step": 0.3123234430948893
+ },
+ "B1_batch4": {
+  "s_per_batch": [
+   36.14756774902344,
+   36.18487095832825
+  ],
+  "s_per_image": 9.03689193725586,
+  "s_per_step": 1.204918924967448
+ },
+ "B4_same_gpu_rerun": {
+  "png_sha_equal": true,
+  "max_abs_latent_diff": 0.0
+ },
+ "B7_diffusion_audit": {
+  "s_per_audit_step": 0.31301240921020507,
+  "same_gpu_rel_err": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "fraction_of_generation": 0.033406864596147355
+ }
+}

@@ -1,0 +1,14 @@
+\begin{tabular}{@{}llcrrrr@{}}
+\toprule
+\textbf{Dispatch} & \textbf{Acceptance} & \textbf{Penalties} & \textbf{Wrong accepted} & \textbf{Exec./pack} & \textbf{Latency} & \textbf{Fast/slow credit} \\
+\midrule
+$n=3$ & Unanimous (3 of 3) & \xmark & 1.80\% & 6.67 & 1.64 & 1.7$\times$ \\
+$n=3$ & Unanimous (3 of 3) & \cmark & 1.80\% & 6.67 & 1.64 & 1.7$\times$ \\
+$n=5$ & First 3 matching & \xmark & 6.09\% & 5.19 & 1.22 & 4.2$\times$ \\
+$n=5$ & First 3 matching & \cmark & 0 & 5.03 & 1.10 & 9.6$\times$ \\
+$n=5$ & Wait for all & \xmark & 6.09\% & 5.19 & 1.79 & 2.3$\times$ \\
+$n=5$ & Wait for all & \cmark & 0 & 5.03 & 1.90 & 2.7$\times$ \\
+$n=5$ & Hybrid (ours) & \xmark & 6.09\% & 5.19 & 1.22 & 2.3$\times$ \\
+$n=5$ & Hybrid (ours) & \cmark & 0 & 5.03 & 1.10 & 2.7$\times$ \\
+\bottomrule
+\end{tabular}

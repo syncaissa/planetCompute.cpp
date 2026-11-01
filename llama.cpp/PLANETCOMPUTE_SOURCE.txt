@@ -1,0 +1,5 @@
+This is the llama.cpp source planetCompute is built with: the copy vendored in the Rust crate
+llama-cpp-sys-2 0.1.160 (crates.io), from llama-cpp-rs commit 0dd5814c9b061930965d144c1653cd4d05054873,
+whose llama.cpp submodule is: d81235049384534c167caea52b85a694f6103d14 https://github.com/ggml-org/llama.cpp
+Pinned by client/Cargo.lock. Kept here (2026-10-21) for reference and as the base for planetCompute's own
+speed changes (keep them as a small patch series against this commit, the sushila.cpp way).

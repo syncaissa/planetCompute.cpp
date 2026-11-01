@@ -1,0 +1,35 @@
+{
+ "info": {
+  "gpu": "NVIDIA GeForce RTX 3090",
+  "mem_gb": 23.6,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.6"
+ },
+ "models": {
+  "facebook/musicgen-small": {
+   "download_s": 51.921016454696655,
+   "bytes": 5809055446,
+   "batch1": {
+    "s": 4.322301626205444,
+    "s_per_10s_audio": 4.322301626205444
+   },
+   "batch4": {
+    "s": 4.546805143356323,
+    "s_per_10s_audio": 1.1367012858390808
+   }
+  },
+  "facebook/musicgen-medium": {
+   "download_s": 180.52360463142395,
+   "bytes": 11959248802,
+   "batch1": {
+    "s": 8.188863039016724,
+    "s_per_10s_audio": 8.188863039016724
+   },
+   "batch4": {
+    "s": 9.575485467910767,
+    "s_per_10s_audio": 2.3938713669776917
+   }
+  }
+ }
+}

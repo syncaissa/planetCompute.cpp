@@ -1,0 +1,35 @@
+{
+ "info": {
+  "gpu": "NVIDIA A100-SXM4-80GB",
+  "mem_gb": 79.3,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.0"
+ },
+ "models": {
+  "facebook/musicgen-small": {
+   "download_s": 9.462208032608032,
+   "bytes": 5809055446,
+   "batch1": {
+    "s": 10.52079463005066,
+    "s_per_10s_audio": 10.52079463005066
+   },
+   "batch4": {
+    "s": 10.543659448623657,
+    "s_per_10s_audio": 2.6359148621559143
+   }
+  },
+  "facebook/musicgen-medium": {
+   "download_s": 25.630362272262573,
+   "bytes": 11959248802,
+   "batch1": {
+    "s": 19.547659397125244,
+    "s_per_10s_audio": 19.547659397125244
+   },
+   "batch4": {
+    "s": 19.8873450756073,
+    "s_per_10s_audio": 4.971836268901825
+   }
+  }
+ }
+}

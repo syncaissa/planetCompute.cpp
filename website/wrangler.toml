@@ -1,0 +1,42 @@
+# One-time deploy configuration for the PlanetCompute website Worker, needed to switch on the
+# CapacityPolice Durable Object. After `npx wrangler deploy` once, dashboard copy-paste keeps working.
+name = "planetcompute-website-prod"
+main = "worker.js"
+compatibility_date = "2026-10-20"
+keep_vars = true            # keep the variables and secrets already set in the dashboard
+
+[[durable_objects.bindings]]
+name = "POLICE"
+class_name = "CapacityPolice"
+
+[[migrations]]
+tag = "v1-capacity-police"
+new_sqlite_classes = ["CapacityPolice"]
+
+[[durable_objects.bindings]]
+name = "TUNNEL"
+class_name = "DeviceTunnel"
+
+[[migrations]]
+tag = "v2-device-tunnel"
+new_sqlite_classes = ["DeviceTunnel"]
+
+[[durable_objects.bindings]]
+name = "CONTACT"
+class_name = "ContactGuard"
+
+[[migrations]]
+tag = "v3-contact-guard"
+new_sqlite_classes = ["ContactGuard"]
+
+[[durable_objects.bindings]]
+name = "SHERPA"
+class_name = "SherpaBroker"
+
+[[migrations]]
+tag = "v4-sherpa-broker"
+new_sqlite_classes = ["SherpaBroker"]
+
+# hourly: heartbeat servers health check + "no server running" email to the admins (hbCron)
+[triggers]
+crons = ["17 * * * *"]

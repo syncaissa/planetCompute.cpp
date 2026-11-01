@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PlanetComputeTables",
+      "Effect": "Allow",
+      "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem",
+                 "dynamodb:Query", "dynamodb:TransactWriteItems", "dynamodb:ConditionCheckItem",
+                 "dynamodb:BatchGetItem", "dynamodb:BatchWriteItem", "dynamodb:Scan"],
+      "Resource": ["arn:aws:dynamodb:us-east-1:<AWS_ACCOUNT_ID>:table/planetcompute-ai-*",
+                   "arn:aws:dynamodb:us-east-1:<AWS_ACCOUNT_ID>:table/planetcompute-ai-*/index/*"]
+    },
+    {
+      "Sid": "SendSignInCodes",
+      "Effect": "Allow",
+      "Action": ["ses:SendEmail"],
+      "Resource": "*",
+      "Condition": { "StringLike": { "ses:FromAddress": "*@planetcompute.ai" } }
+    }
+  ]
+}

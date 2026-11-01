@@ -1,0 +1,9 @@
+The Vulkan loader carried inside the Windows planetCompute.exe (src/vkloader.rs, build.rs VULKAN_LOADER_DLL)
+
+What: vulkan-1.dll, the Khronos Vulkan loader, taken from the LunarG Vulkan SDK that CI installs
+(.github/workflows/client.yml, step "Vulkan SDK (Windows)"; version printed in the CI log).
+Source: https://github.com/KhronosGroup/Vulkan-Loader
+Licence: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0), Copyright The Khronos Group Inc.,
+LunarG, Inc., Valve Corporation and others. Not changed by PlanetCompute.
+Used only when the PC has no vulkan-1.dll of its own (no graphics driver): it is written to
+%APPDATA%\planetCompute\bin\vulkan-1.dll and loaded from there. With a graphics driver the PC's own loader is used.

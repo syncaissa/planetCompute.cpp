@@ -1,0 +1,179 @@
+{
+ "info": {
+  "gpu": "NVIDIA A100-SXM4-80GB",
+  "mem_gb": 79.3,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.0"
+ },
+ "rows": [
+  {
+   "trace": 0,
+   "k": 0,
+   "cross_gpu_step_rel_err": 0.0002876685175579041,
+   "trajectory_rel_diff": 0.0002876671205740422
+  },
+  {
+   "trace": 0,
+   "k": 5,
+   "cross_gpu_step_rel_err": 0.0002169966173823923,
+   "trajectory_rel_diff": 0.0007074639433994889
+  },
+  {
+   "trace": 0,
+   "k": 10,
+   "cross_gpu_step_rel_err": 0.00018655092571862042,
+   "trajectory_rel_diff": 0.0009030579240061343
+  },
+  {
+   "trace": 0,
+   "k": 15,
+   "cross_gpu_step_rel_err": 0.00015679324860684574,
+   "trajectory_rel_diff": 0.001064964453689754
+  },
+  {
+   "trace": 0,
+   "k": 20,
+   "cross_gpu_step_rel_err": 0.00018277970957569778,
+   "trajectory_rel_diff": 0.0013317117700353265
+  },
+  {
+   "trace": 0,
+   "k": 25,
+   "cross_gpu_step_rel_err": 0.000232226841035299,
+   "trajectory_rel_diff": 0.0020041698589920998
+  },
+  {
+   "trace": 0,
+   "k": 29,
+   "cross_gpu_step_rel_err": 0.00046316682710312307,
+   "trajectory_rel_diff": 0.004334889352321625
+  },
+  {
+   "trace": 1,
+   "k": 0,
+   "cross_gpu_step_rel_err": 0.0003413191589061171,
+   "trajectory_rel_diff": 0.0003413188678678125
+  },
+  {
+   "trace": 1,
+   "k": 5,
+   "cross_gpu_step_rel_err": 0.0002190680825151503,
+   "trajectory_rel_diff": 0.0008647384820505977
+  },
+  {
+   "trace": 1,
+   "k": 10,
+   "cross_gpu_step_rel_err": 0.00019650935428217053,
+   "trajectory_rel_diff": 0.0013041894417256117
+  },
+  {
+   "trace": 1,
+   "k": 15,
+   "cross_gpu_step_rel_err": 0.00018288088904228061,
+   "trajectory_rel_diff": 0.0016613283660262823
+  },
+  {
+   "trace": 1,
+   "k": 20,
+   "cross_gpu_step_rel_err": 0.00019219952810090035,
+   "trajectory_rel_diff": 0.0021800631657242775
+  },
+  {
+   "trace": 1,
+   "k": 25,
+   "cross_gpu_step_rel_err": 0.0002639910962898284,
+   "trajectory_rel_diff": 0.003064103191718459
+  },
+  {
+   "trace": 1,
+   "k": 29,
+   "cross_gpu_step_rel_err": 0.0005290677072480321,
+   "trajectory_rel_diff": 0.006958018057048321
+  },
+  {
+   "trace": 2,
+   "k": 0,
+   "cross_gpu_step_rel_err": 0.0002951846399810165,
+   "trajectory_rel_diff": 0.0002951832429971546
+  },
+  {
+   "trace": 2,
+   "k": 5,
+   "cross_gpu_step_rel_err": 0.00022691546473652124,
+   "trajectory_rel_diff": 0.0007531645824201405
+  },
+  {
+   "trace": 2,
+   "k": 10,
+   "cross_gpu_step_rel_err": 0.00022045793593861163,
+   "trajectory_rel_diff": 0.0010382798500359058
+  },
+  {
+   "trace": 2,
+   "k": 15,
+   "cross_gpu_step_rel_err": 0.00017773057334125042,
+   "trajectory_rel_diff": 0.0015978782903403044
+  },
+  {
+   "trace": 2,
+   "k": 20,
+   "cross_gpu_step_rel_err": 0.0001973479229491204,
+   "trajectory_rel_diff": 0.0028516510501503944
+  },
+  {
+   "trace": 2,
+   "k": 25,
+   "cross_gpu_step_rel_err": 0.00025416421703994274,
+   "trajectory_rel_diff": 0.006092488300055265
+  },
+  {
+   "trace": 2,
+   "k": 29,
+   "cross_gpu_step_rel_err": 0.0004467263934202492,
+   "trajectory_rel_diff": 0.018062179908156395
+  },
+  {
+   "trace": 3,
+   "k": 0,
+   "cross_gpu_step_rel_err": 0.0003825819294434041,
+   "trajectory_rel_diff": 0.0003825821040663868
+  },
+  {
+   "trace": 3,
+   "k": 5,
+   "cross_gpu_step_rel_err": 0.0002155142865376547,
+   "trajectory_rel_diff": 0.0008899153908714652
+  },
+  {
+   "trace": 3,
+   "k": 10,
+   "cross_gpu_step_rel_err": 0.00022407992219086736,
+   "trajectory_rel_diff": 0.001621206640265882
+  },
+  {
+   "trace": 3,
+   "k": 15,
+   "cross_gpu_step_rel_err": 0.0001843780919443816,
+   "trajectory_rel_diff": 0.006450256798416376
+  },
+  {
+   "trace": 3,
+   "k": 20,
+   "cross_gpu_step_rel_err": 0.00020404318638611585,
+   "trajectory_rel_diff": 0.018704883754253387
+  },
+  {
+   "trace": 3,
+   "k": 25,
+   "cross_gpu_step_rel_err": 0.0002791704027913511,
+   "trajectory_rel_diff": 0.037187736481428146
+  },
+  {
+   "trace": 3,
+   "k": 29,
+   "cross_gpu_step_rel_err": 0.000485043041408062,
+   "trajectory_rel_diff": 0.0670330598950386
+  }
+ ]
+}

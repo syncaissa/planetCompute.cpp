@@ -1,0 +1,254 @@
+<!-- Documentation and Disclaimer: ONE source for the website (/docs) and the planetCompute program (tab Docs).
+     Placed inside page templates by scripts/embed_docs.py: no backslashes, backticks or dollar-braces in this file. -->
+<div class="pcdocs">
+<style>
+.pcdocs { max-width: 860px; line-height: 1.6; font-size: .97rem; }
+.pcdocs h1 { font: 600 2rem/1.2 "Space Grotesk", sans-serif; margin: 0 0 6px; }
+.pcdocs h2 { font: 600 1.35rem/1.3 "Space Grotesk", sans-serif; margin: 30px 0 8px; padding-top: 10px; border-top: 1px solid var(--border, #ccc); }
+.pcdocs h3 { font: 600 1.05rem/1.3 "Space Grotesk", sans-serif; margin: 18px 0 6px; }
+.pcdocs p, .pcdocs li { color: var(--text, inherit); }
+.pcdocs .lead { color: var(--muted, #666); font-size: 1rem; }
+.pcdocs ul, .pcdocs ol { padding-left: 1.3em; margin: 6px 0 12px; } .pcdocs li { margin: 4px 0; }
+.pcdocs .toc { columns: 2; column-gap: 28px; padding-left: 1.3em; } .pcdocs .toc li { margin: 0 0 6px; break-inside: avoid; } @media (max-width: 640px) { .pcdocs .toc { columns: 1; } }
+.pcdocs .warn { padding: 14px 16px; border-radius: 7px; border: 1px solid var(--gold, #d4a72c); background: rgba(212, 167, 44, .08); margin: 12px 0; }
+.pcdocs table { border-collapse: collapse; width: 100%; font-size: .9rem; margin: 8px 0 14px; }
+.pcdocs th, .pcdocs td { text-align: left; vertical-align: top; padding: 7px 8px; border-bottom: 1px solid var(--border, #ccc); }
+.pcdocs th { color: var(--muted, #666); font-weight: 600; }
+.pcdocs code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .86em; }
+.pcdocs .small { font-size: .85rem; color: var(--muted, #666); }
+.pcdocs a { overflow-wrap: anywhere; }
+</style>
+
+<h1>Documentation and Disclaimer</h1>
+<p class="lead">How the PlanetCompute website and the planetCompute program work, what they do on your computer, what
+they never do, and the conditions of taking part. Please read the disclaimers at the end before you share compute or
+transfer any tokens.</p>
+
+<ol class="toc">
+  <li><a href="#d-what">What PlanetCompute is</a></li>
+  <li><a href="#d-share">Sharing compute</a></li>
+  <li><a href="#d-check">How work is checked</a></li>
+  <li><a href="#d-credit">Compute Credit and your balance</a></li>
+  <li><a href="#d-receive">Receiving compute</a></li>
+  <li><a href="#d-program">The planetCompute program</a></li>
+  <li><a href="#d-safety">Safety on your computer</a></li>
+  <li><a href="#d-privacy">Privacy: who sees what</a></li>
+  <li><a href="#d-account">Your account</a></li>
+  <li><a href="#d-status">What is built today, and what is not</a></li>
+  <li><a href="#d-disclaimer">Disclaimers</a></li>
+  <li><a href="#d-contact">Contact</a></li>
+</ol>
+
+<h2 id="d-what">1. What PlanetCompute is</h2>
+<p>Every night, millions of PCs and laptops sit idle for hours. PlanetCompute lets people lend that spare power to each
+other. While your computer is idle it helps run jobs for others, and you collect Compute Credit, recorded as PlanetComp
+points. When you need serious power yourself, you draw compute from the network and points are deducted from your
+balance. Your lifetime contribution is tracked separately, for bragging rights.</p>
+<p>There are two ways to take part, and you can use either or both:</p>
+<ul>
+  <li><b>The website</b>, planetcompute.ai. Open <b>Share Compute</b> in your browser and your computer shares compute while
+  the page stays open. Nothing is installed. <b>Receive Compute</b> on the website (Express) sends picture and video
+  requests to the PlanetCompute pool when you have no program of your own.</li>
+  <li><b>The planetCompute program</b> for Windows, macOS and Linux. It shares compute from a small window or the tray, also
+  while you work in other programs, and it runs AI models on your own computer: chat, pictures and short videos.</li>
+</ul>
+<p>The community pool only works if enough compute is contributed to it. At first the pool is small, so PlanetCompute
+seeds it with its own servers; as more members join and the network becomes self-sufficient, this share is reduced and
+may eventually be phased out.</p>
+
+<h2 id="d-share">2. Sharing compute</h2>
+<h3>Starting and stopping</h3>
+<ol>
+  <li>Sign in (see Your account). Signing in is needed so that the work your computer does is credited to you.</li>
+  <li>Choose how much to share: the number of processor <b>cores</b>, a <b>CPU cap</b> (the share of each granted core
+  PlanetCompute may use; after each piece of work the program rests in proportion), and, where available, a graphics-card
+  cap.</li>
+  <li>Read and tick the <b>consent box</b>. It names the cores and caps you chose, the status reports that are sent, and
+  that the electricity and wear are yours. Nothing runs before you tick it, and a new session asks again.</li>
+  <li>Press <b>Start computing</b>. A status light (Running, Idle, Paused, Stopped) shows PlanetCompute's own processor,
+  graphics and memory use and the credit received. <b>Pause</b> keeps the session; <b>Stop</b> ends it.</li>
+</ol>
+<p>In the browser, sharing stops when you close the tab, and browsers slow down background tabs. The program keeps
+sharing when its window is closed (it stays in the tray, and says so when you close the window) until you pause it or
+quit it. While the program makes a chat answer or a picture for you, its shared work waits.</p>
+<h3>What your computer computes</h3>
+<ul>
+  <li><b>WorkPacks.</b> Small, fixed computations whose answers can be recomputed and checked by anyone. The same pack
+  gives exactly the same bytes in a browser and in the program, on every operating system, so results from different
+  computers can be compared.</li>
+  <li><b>Maths packs.</b> Pieces of large matrix multiplications cut up by a SherpaHub (an organising copy of the program).
+  Every piece is checked by the SherpaHub before it counts.</li>
+  <li><b>Whole AI prompts</b> (program only). A chat question, a picture or a short video from the pool, made by a model
+  your program already holds. A share of them is made a second time on another computer and compared.</li>
+</ul>
+<p>A job carries data and the name of a model, never code. Your computer only runs the computations built into the
+website page or the signed program.</p>
+
+<h2 id="d-check">3. How work is checked</h2>
+<p>Only checked work earns credit, so that a modified program or a fast fake answer cannot earn anything.</p>
+<ul>
+  <li><b>Capacity check.</b> About once a minute the website sends your computer a short test made of the same kind of work,
+  times the answer on its own clock and recomputes parts of it. It costs about 1.7% of the time. It shows what your
+  computer <i>can</i> do; a device that fails it three times in a row is no longer verified.</li>
+  <li><b>Leases with a random audit.</b> Credit for WorkPacks comes through leases of about ten minutes. When the time is
+  up, your computer first commits a fingerprint (a Merkle root) of all its results; only then does the website pick 20
+  packs at random and recompute them. A pass credits every pack of the lease; a fail credits nothing and is a strike;
+  three strikes in a row hold the device for an hour.</li>
+  <li><b>Maths packs</b> are checked one by one with Freivalds' method, which catches a wrong piece with near certainty at a
+  small fraction of the cost of redoing it.</li>
+  <li><b>Whole prompts</b> are partly repeated on a second computer with the same seed and compared.</li>
+</ul>
+<p>Everything that decides credit runs on PlanetCompute's servers. The program never computes its own credit and never
+holds a key that could create credit.</p>
+
+<h2 id="d-credit">4. Compute Credit and your balance</h2>
+<p>Work is measured in <b>Work Units (WU)</b>, a measure of the computation itself, not of the time your computer
+took. <b>My Balance</b>, on the website and in the program, shows:</p>
+<table>
+  <tr><th>Line</th><th>What it means</th></tr>
+  <tr><td>Compute Shared</td><td>Verified work your computers did for the grid.</td></tr>
+  <tr><td>Compute Received</td><td>Work the grid did for you.</td></tr>
+  <tr><td>Difference</td><td>Compute Shared minus Compute Received: what you can still draw.</td></tr>
+  <tr><td>Lifetime Compute Contributed</td><td>Everything your computers have contributed, ever (it never goes down when you use credit).</td></tr>
+  <tr><td>Lifetime Compute Transferred</td><td>What you have transferred out of your balance, ever.</td></tr>
+</table>
+<p>Credit is recorded in PlanetCompute's ledger, written so that a repeated report is never counted twice; a clawback
+after a device is caught cheating is a reversing entry. Credit can be transferred out as the PlanetComp token on the Solana blockchain, at a
+published rate. You need no wallet unless you choose to transfer. A wallet section on My Balance appears only after
+you confirm the two statements shown there (that crypto is permitted where you live, and that PlanetComp is a ledger
+record only). Read the token disclaimer below first.</p>
+<p>Credit is redeemed for processing on the grid. It is not a source of income, and there is no guarantee that compute is
+available whenever you want it.</p>
+
+<h2 id="d-receive">5. Receiving compute</h2>
+<h3>On your own computer (the program)</h3>
+<p><b>Receive Compute</b> runs AI models on your computer, for free and without sending your request anywhere:</p>
+<ul>
+  <li><b>Chat</b> with open-weight language models (llama.cpp inside the program).</li>
+  <li><b>Pictures and short videos</b> with open-weight image and video models (stable-diffusion.cpp), at sizes you choose,
+  including 1080 x 1350 for Instagram. Use <b>Generate Images</b> or <b>Generate Videos</b>.</li>
+  <li><b>Models</b>: download models from the PlanetCompute library. Every file is checked by SHA-256 against its publisher's,
+  so every computer that runs a model runs exactly the same file. Only models whose licences allow it are offered.</li>
+  <li><b>A local API</b> for your own programs, in the common OpenAI style, at <code>http://127.0.0.1:7526</code>
+  (<code>/v1/chat/completions</code>, <code>/v1/images/generations</code>). It listens only on your own computer.</li>
+  <li><b>My Content / Local Content</b>: what you made, kept on your computer. <b>Cloud Content</b>: files you chose to save to
+  PlanetCompute's cloud storage; only files your own program made, within daily limits.</li>
+  <li><b>Local Tunnel URL</b>: a private link that lets your own browser, for example on your phone, use the program on your
+  computer from elsewhere. The link is bound to your account and your computer, and you can revoke it.</li>
+</ul>
+<h3>On the PlanetCompute pool</h3>
+<p>If your computer is too slow, or you have none, a request can go to the <b>PlanetCompute pool</b>: other members'
+programs and, for now, PlanetCompute's own servers. On the website this is <b>Express</b>. The pool has daily limits per
+account, shows a time estimate before you send, and refuses requests that are too large. A picture can take many
+minutes on a computer with no graphics card.</p>
+<div class="warn"><b>Do not send private or confidential material to the pool.</b> A pool request is processed on
+another member's computer. Prompts are kept off the command line and out of saved files, and the "who made it"
+record never shows your prompt or seed, but a determined owner of that computer could still read what passes through
+its memory.</div>
+
+<h2 id="d-program">6. The planetCompute program</h2>
+<ul>
+  <li><b>Install.</b> Download it from planetcompute.ai/download for Windows, macOS or Linux (a Vulkan build uses the graphics
+  card on Linux and Windows; a server build runs without a window). Every build is signed with PlanetCompute's release key;
+  servers that update themselves install only builds whose signature checks. The Windows and Mac downloads are not yet
+  code-signed by Microsoft or Apple, so your system may warn you the first time.</li>
+  <li><b>One window, one copy.</b> The program opens its window on every system. Starting a newer copy closes the older one.</li>
+  <li><b>Headless servers.</b> <code>planetCompute --headless --contribute --cores N --cap P</code> shares a server's cores
+  with no window. <code>planetCompute --help</code> lists every option.</li>
+  <li><b>Updates.</b> Once a day the program checks for a newer build and shows a notice. The notice never blocks anything you
+  do locally. Very old builds may stop earning credit after a notice period, but they can still sign in, show balances and
+  run models locally.</li>
+  <li><b>Self-checks.</b> <code>--workpack-check</code> confirms the built-in computations give the published answers, and
+  <code>--sandbox-check</code> confirms that the model engines cannot step outside their limits.</li>
+</ul>
+
+<h2 id="d-safety">7. Safety on your computer</h2>
+<ul>
+  <li><b>No code from jobs.</b> Jobs carry data and a model name. The website page runs only its own built-in computations
+  in the browser's sandbox; the program runs only its own signed code.</li>
+  <li><b>Sandboxed model engines.</b> The program never opens a model file itself. Its model engine and image engine run as
+  separate processes inside your operating system's sandbox (Landlock and seccomp on Linux, a sandbox profile on macOS, an
+  AppContainer on Windows). They may read only the models and their own folder, write only the pictures folder, and have no
+  network, no access to your other files, no other programs and no sign-in.</li>
+  <li><b>Limits you set.</b> Cores, CPU cap and graphics-card cap are yours to choose and change at any time; Pause and Stop
+  always work.</li>
+  <li><b>Nothing hidden.</b> Sharing never starts silently: no consent, no work. The status light shows what runs.</li>
+</ul>
+
+<h2 id="d-privacy">8. Privacy: who sees what</h2>
+<table>
+  <tr><th>Who</th><th>What they see</th></tr>
+  <tr><td>PlanetCompute</td><td>Your email address, your devices and their status reports (cores, caps, use), the work they did and the credit it earned, and requests you send to the pool (to deliver them). Local chat, pictures and videos made on your own computer stay on your computer unless you save them to the cloud.</td></tr>
+  <tr><td>Other members</td><td>When your computer shares, nothing of yours. When you use the pool, the member whose computer runs your request processes its content (see the warning above).</td></tr>
+  <tr><td>The public</td><td>Nothing, unless you share a link to a file. The blockchain shows pooled wallets and periodic summaries, not your name or your work.</td></tr>
+</table>
+<p>The website uses only the cookies it needs for sign-in and settings (see Cookies on the home page).</p>
+
+<h2 id="d-account">9. Your account</h2>
+<ul>
+  <li><b>No passwords.</b> You sign in with a 6-digit code sent to your email; it works for 10 minutes.</li>
+  <li><b>New accounts</b> are made on the website, which asks for a quick check that you are a person; then sign in to the
+  program with the same email.</li>
+  <li><b>Alerts.</b> You get an email when someone signs in from a new browser or country. Your account page lists where you
+  are signed in, and you can sign out of each.</li>
+  <li><b>Devices.</b> Each computer that shares has its own device key, bound to your account.</li>
+</ul>
+
+<h2 id="d-status">10. What is built today, and what is not</h2>
+<p>PlanetCompute is new. To be clear about what you are using:</p>
+<ul>
+  <li><b>Built and running:</b> sharing from the website and the program, the capacity check, leases with random audits,
+  Compute Credit and My Balance, local chat, pictures and video in the program, the pool for chat, pictures and video,
+  Express, Local and Cloud Content, the Local Tunnel URL, SherpaHubs on PlanetCompute's own servers with checked maths
+  packs, sandboxed engines and signed builds.</li>
+  <li><b>Not yet:</b> splitting a real AI model's work into maths packs for browsers, SherpaHubs on members' computers,
+  graphics-card WorkPacks in the program, code signing by Microsoft and Apple, and pausing automatically when you are
+  active, on battery or outside chosen hours. Until those arrive, use the caps and the Pause button.</li>
+</ul>
+<p>The design and its measurements are described in the paper <i>PlanetCompute: Toward a Verifiable AI Grid of Idle
+Browsers and Desktops</i>; the code, scripts and tests are at <a href="https://github.com/syncaissa/planetCompute.cpp" target="_blank" rel="noopener">github.com/syncaissa/planetCompute.cpp</a>.</p>
+
+<h2 id="d-disclaimer">11. Disclaimers</h2>
+<h3>PlanetComp points and crypto</h3>
+<div class="warn">
+<p><b>PlanetComp is a ledger of contributions only and may have no monetary value.</b> Check your country's and local
+laws: if you cannot hold crypto where you live, refrain from transferring any PlanetComp to your wallet, although it may
+or may not have value. User discretion is required.</p>
+</div>
+<ul>
+  <li><b>No purchase required.</b> You never pay to take part or to receive Compute Credit. Tokens are not payment for goods,
+  services or work.</li>
+  <li><b>No promise of value.</b> PlanetCompute.ai does not guarantee that tokens have, or will ever have, any monetary value.
+  Their value, if any, is set by third parties and may rise, fall or become zero; you could lose 100% of any value they ever
+  have.</li>
+  <li><b>Not an investment.</b> Tokens carry no ownership, profit-sharing, dividend, voting or other rights in PlanetCompute.ai.
+  Nothing PlanetCompute says is investment, financial, legal or tax advice.</li>
+  <li><b>Your decision, your risk, your laws.</b> If you transfer, sell or trade tokens, you do so at your own risk, through third
+  parties PlanetCompute.ai does not control, and you are responsible for following your local laws and for any taxes or
+  fees.</li>
+  <li><b>Changes.</b> PlanetCompute.ai may change or end the token programme, or use a different token, at any time without
+  compensation. Changes apply from their effective date, never to credit already received.</li>
+  <li><b>No guarantee of compute.</b> Redeeming credit depends on the compute available at the time, and there may not be enough
+  for your request.</li>
+</ul>
+<h3>Electricity, hardware and your responsibility</h3>
+<p>Sharing compute runs your processor and, if you allow it, your graphics card under sustained load. This uses
+electricity, produces heat and may add to the wear of fans, batteries, processors and graphics cards. You are responsible
+for the electricity and other costs of running your device; PlanetCompute.ai does not reimburse them. You are responsible
+for the condition and safe use of your device, and PlanetCompute.ai is not liable for any wear, damage, overheating, data
+loss or other loss arising from sharing compute, to the fullest extent permitted by law. Share only what you are
+comfortable with, keep the device well ventilated, take particular care with laptops on battery and in warm
+surroundings, and pause or stop at any time. PlanetCompute is not a source of income.</p>
+<h3>What you make</h3>
+<p>You are responsible for the prompts you send and for how you use what the models make, including other people's rights
+and the licence of each model (shown in the Models list). Some requests are refused. Models can be wrong, and their output
+is not advice.</p>
+<h3>Service</h3>
+<p>The website, the program and the pool are provided as they are, without warranties, and may change, pause or stop. Keep
+your own copies of anything important.</p>
+
+<h2 id="d-contact">12. Contact</h2>
+<p>Questions: use <b>Email us a question</b> on the home page, or write to syncaissa@outlook.com. Problems: <b>Report Bugs</b>
+on the home page. Source code, scripts, tests and the paper: <a href="https://github.com/syncaissa/planetCompute.cpp" target="_blank" rel="noopener">https://github.com/syncaissa/planetCompute.cpp</a>. PlanetCompute.ai is run by Syncaissa Systems Inc.</p>
+<p class="small">Last updated 1 November 2026.</p>
+</div>

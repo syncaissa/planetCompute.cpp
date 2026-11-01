@@ -1,0 +1,46 @@
+{
+ "info": {
+  "gpu": "NVIDIA A100-SXM4-80GB",
+  "mem_gb": 79.3,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.0"
+ },
+ "B3": {
+  "download_s": 17.679699420928955,
+  "bytes": 7108524699,
+  "load_to_gpu_s": 2.4584860801696777
+ },
+ "B1_batch1": {
+  "s_per_batch": [
+   3.249173402786255,
+   3.245077133178711,
+   3.242439031600952
+  ],
+  "s_per_image": 3.242439031600952,
+  "s_per_step": 0.10808130105336507
+ },
+ "B1_batch4": {
+  "s_per_batch": [
+   11.686450958251953,
+   11.685004711151123
+  ],
+  "s_per_image": 2.9212511777877808,
+  "s_per_step": 0.38950015703837076
+ },
+ "B4_same_gpu_rerun": {
+  "png_sha_equal": true,
+  "max_abs_latent_diff": 0.0
+ },
+ "B7_diffusion_audit": {
+  "s_per_audit_step": 0.14339380264282225,
+  "same_gpu_rel_err": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "fraction_of_generation": 0.044224055177383446
+ }
+}

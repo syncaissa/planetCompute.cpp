@@ -1,0 +1,35 @@
+{
+ "info": {
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "mem_gb": 23.5,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.9"
+ },
+ "models": {
+  "facebook/musicgen-small": {
+   "download_s": 38.25629234313965,
+   "bytes": 5809055446,
+   "batch1": {
+    "s": 10.101728200912476,
+    "s_per_10s_audio": 10.101728200912476
+   },
+   "batch4": {
+    "s": 10.693591117858887,
+    "s_per_10s_audio": 2.6733977794647217
+   }
+  },
+  "facebook/musicgen-medium": {
+   "download_s": 39.63751983642578,
+   "bytes": 11959248802,
+   "batch1": {
+    "s": 20.97165536880493,
+    "s_per_10s_audio": 20.97165536880493
+   },
+   "batch4": {
+    "s": 20.189951181411743,
+    "s_per_10s_audio": 5.047487795352936
+   }
+  }
+ }
+}

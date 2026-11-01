@@ -1,0 +1,108 @@
+=== cargo test --release (client/workpack), RunPod 16 vCPU                     AMD EPYC 9575F 64-Core Processor
+     Running unittests src/lib.rs (target/release/deps/workpack-f37c920093df25cd)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/kernels.rs (target/release/deps/kernels-d6b4ed5dd9d72968)
+test matmul_extremes_are_exact ... ok
+test mc_pi_and_lease_seed_unchanged ... ok
+test conformance_vectors ... ok
+test pinned_vectors_match ... ok
+test freivalds_accepts_correct_and_catches_every_single_change ... ok
+test matmul_matches_naive_on_200_shapes ... ok
+test speed ... ok
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+     Running tests/sim.rs (target/release/deps/sim-c8543fc19967d23d)
+test d_liars_are_caught_banned_and_the_job_stays_exact ... ok
+test h_tiny_device_caches ... ok
+test e_late_duplicates_are_credited_once ... ok
+test g_damaged_messages_are_refused ... ok
+test deterministic_replay ... ok
+test c_stragglers_hedging_bounds_the_tail ... ok
+test f_hub_crashes_five_times ... ok
+test b_devices_vanish_mid_pack ... ok
+test j_efficiency_with_real_work_per_device ... ok
+test a_baseline_one_device_and_500 ... ok
+test i_scale_65536_units_2000_devices ... ok
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.10s
+     Running tests/stage3.rs (target/release/deps/stage3-ab2fd5f30f84bb6e)
+test packs_fit_the_message_limit ... ok
+test threads_give_identical_results ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/wire.rs (target/release/deps/wire-f24e2dc361dc4917)
+test every_truncation_and_extension_is_refused ... ok
+test lying_lengths_and_fields_are_refused ... ok
+test round_trip ... ok
+test random_bytes_never_panic ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+=== scripts/test_sherpa_e2e.sh
+PASS 1. job 1 DONE through the broker (about 1 s after the devices started): SherpaHub: job 40442d5246518179 DONE: every unit checked, and the whole product passed the final check (4096 units, 137.4 GOP; credited 4096 units; 6 
+PASS 1. program devices connected and computed
+PASS 1. JS (browser-code) devices computed units: {"lie":false,"units":3729,"packs":120,"banned":0,"closes":[4010,4010,4010]}
+PASS 1. both liars banned (closed 4008): {"lie":true,"units":82,"packs":6,"banned":2,"closes":[4008,4008]}
+PASS 1. hub logged the bans
+   job 224aaa67f6e7f974 killed at about 4476 of 16384 units
+PASS 2. restarted hub continues the same job: SherpaHub: continuing job 224aaa67f6e7f974 (4476 of 16384 units already done, epoch 2)
+PASS 2. it kept the units done before the kill (4476 of 16384)
+PASS 2. job 224aaa67f6e7f974 DONE after the restart: SherpaHub: job 224aaa67f6e7f974 DONE: every unit checked, and the whole product passed the final check (16384 units, 549.8 GOP; credited 11908 units; 
+--- hub log (last 8 lines)
+Contributing: off (8 cores at up to 50%). Start it on the page (I agree), or run with --contribute
+SherpaHub: continuing job 224aaa67f6e7f974 (4476 of 16384 units already done, epoch 2)
+SherpaHub: connected to http://127.0.0.1:8799 (job 224aaa67f6e7f974: 4476 of 16384 units done)
+SherpaHub: job 224aaa67f6e7f974: 4476 of 16384 units, 0 devices, 0 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: job 224aaa67f6e7f974: 4476 of 16384 units, 0 devices, 0 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: job 224aaa67f6e7f974: 6776 of 16384 units, 3 devices, 55 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: job 224aaa67f6e7f974 DONE: every unit checked, and the whole product passed the final check (16384 units, 549.8 GOP; credited 11908 units; 0 strikes)
+SherpaHub: no next job (--sherpa-repeat starts one after another); running in regular mode
+logs: /tmp/tmp.z83utNTizl
+
+8 passed, 0 failed
+
+=== hub.log
+planetCompute 0.1.0 --headless (linux x86_64)
+planetCompute.cpp (based on llama.cpp d812350): CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 |
+Sign in and contribute at http://localhost:7601/local/?t=167a5ef57bed439e8ef183c8e47652729e426ac270854ab59252cd3b7398133b
+  (the ?t= part is this program's secret: keep the link to yourself)
+  from another computer: ssh -L 7601:localhost:7601 <this server>, then open that link there
+planetCompute 0.1.0 started as a SherpaHub (job 4096x4096x4096, tiles of 64x64)
+Contributing: off (8 cores at up to 50%). Start it on the page (I agree), or run with --contribute
+SherpaHub: new job 40442d5246518179: 4096x4096x4096 int8 matrix product, 4096 units of 64x64
+SherpaHub: connected to http://127.0.0.1:8799 (job 40442d5246518179: 0 of 4096 units done)
+SherpaHub: job 40442d5246518179: 0 of 4096 units, 0 devices, 0 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: job 40442d5246518179: 0 of 4096 units, 0 devices, 0 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: device 4 banned for this job (3 wrong answers)
+SherpaHub: device 2 banned for this job (3 wrong answers)
+SherpaHub: job 40442d5246518179 DONE: every unit checked, and the whole product passed the final check (4096 units, 137.4 GOP; credited 4096 units; 6 strikes)
+SherpaHub: no next job (--sherpa-repeat starts one after another); running in regular mode
+planetCompute 0.1.0 --headless (linux x86_64)
+planetCompute.cpp (based on llama.cpp d812350): CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 |
+Sign in and contribute at http://localhost:7601/local/?t=167a5ef57bed439e8ef183c8e47652729e426ac270854ab59252cd3b7398133b
+  (the ?t= part is this program's secret: keep the link to yourself)
+  from another computer: ssh -L 7601:localhost:7601 <this server>, then open that link there
+planetCompute 0.1.0 started as a SherpaHub (job 8192x4096x8192, tiles of 64x64)
+Contributing: off (8 cores at up to 50%). Start it on the page (I agree), or run with --contribute
+SherpaHub: new job 224aaa67f6e7f974: 8192x4096x8192 int8 matrix product, 16384 units of 64x64
+SherpaHub: connected to http://127.0.0.1:8799 (job 224aaa67f6e7f974: 0 of 16384 units done)
+SherpaHub: job 224aaa67f6e7f974: 0 of 16384 units, 0 devices, 0 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: job 224aaa67f6e7f974: 0 of 16384 units, 0 devices, 0 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: job 224aaa67f6e7f974: 4476 of 16384 units, 3 devices, 106 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+planetCompute 0.1.0 --headless (linux x86_64)
+planetCompute.cpp (based on llama.cpp d812350): CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 |
+Sign in and contribute at http://localhost:7601/local/?t=167a5ef57bed439e8ef183c8e47652729e426ac270854ab59252cd3b7398133b
+  (the ?t= part is this program's secret: keep the link to yourself)
+  from another computer: ssh -L 7601:localhost:7601 <this server>, then open that link there
+planetCompute 0.1.0 started as a SherpaHub (job 8192x4096x8192, tiles of 64x64)
+Contributing: off (8 cores at up to 50%). Start it on the page (I agree), or run with --contribute
+SherpaHub: continuing job 224aaa67f6e7f974 (4476 of 16384 units already done, epoch 2)
+SherpaHub: connected to http://127.0.0.1:8799 (job 224aaa67f6e7f974: 4476 of 16384 units done)
+SherpaHub: job 224aaa67f6e7f974: 4476 of 16384 units, 0 devices, 0 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: job 224aaa67f6e7f974: 4476 of 16384 units, 0 devices, 0 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: job 224aaa67f6e7f974: 6776 of 16384 units, 3 devices, 55 packs sent, 0 hedges, 0 timeouts, 0 failed units, 0 strikes
+SherpaHub: job 224aaa67f6e7f974 DONE: every unit checked, and the whole product passed the final check (16384 units, 549.8 GOP; credited 11908 units; 0 strikes)
+SherpaHub: no next job (--sherpa-repeat starts one after another); running in regular mode
+=== liar.log (last)
+{"lie":true,"units":82,"packs":6,"banned":2,"closes":[4008,4008]}
+=== d1.log
+SherpaHub packs: connected, computing on 2 cores
+SherpaHub packs: connected, computing on 2 cores
+SherpaHub packs: connected, computing on 2 cores

@@ -1,0 +1,29 @@
+#!/bin/bash
+# planetCompute workhorse: everything lives in this folder (nothing outside it).
+#   ./whctl start | stop | restart | status | logs
+# The agent (bin/whagent.py) runs 1-6 copies of bin/planetCompute and follows the admin page (tab Workhorses); it runs
+# under a loop that starts it again 2 s after it stops; its log is cut back when it passes 50 MB.
+D="$(cd "$(dirname "$0")" && pwd)"
+PY=$(command -v python3)
+alive() { [ -s "$D/run/agent.pid" ] && kill -0 "$(cat "$D/run/agent.pid")" 2>/dev/null; }
+start() {
+  alive && { echo "agent already running (pid $(cat "$D/run/agent.pid"))"; return; }
+  setsid bash -c "while true; do
+      [ \$(stat -c %s '$D/logs/agent.log' 2>/dev/null || echo 0) -gt 52428800 ] && tail -c 5000000 '$D/logs/agent.log' > '$D/logs/agent.log.tmp' && mv '$D/logs/agent.log.tmp' '$D/logs/agent.log'
+      echo \"== start \$(date -u +%FT%TZ)\" >> '$D/logs/agent.log'
+      HOME='$D/data' '$PY' '$D/bin/whagent.py' >> '$D/logs/agent.log' 2>&1
+      sleep 2
+    done" < /dev/null > /dev/null 2>&1 &
+  echo $! > "$D/run/agent.pid"; echo "agent started (pid $!)"
+}
+stop() { alive && { kill -- -"$(cat "$D/run/agent.pid")" 2>/dev/null; sleep 3; echo "agent and its copies stopped"; }; rm -f "$D/run/agent.pid"; }
+case "$1" in
+  start) start ;;
+  stop) stop ;;
+  restart) stop; start ;;
+  status) alive && echo "agent running (pid $(cat "$D/run/agent.pid"))" || echo "agent NOT running"
+          echo "orders: $(cat "$D/data/agent.json" 2>/dev/null)"
+          pgrep -af "$D/bin/planetCompute --headless" | sed 's/^/copy: /' ;;
+  logs) tail -n 30 "$D/logs/agent.log"; for f in "$D"/logs/i*.log; do [ -f "$f" ] && { echo "== $f"; tail -n 8 "$f"; }; done ;;
+  *) echo "usage: $0 start|stop|restart|status|logs" ;;
+esac

@@ -1,0 +1,20 @@
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Measurement} & \textbf{RTX 3090} & \textbf{RTX 4090} & \textbf{A100 80GB} \\
+\midrule
+SDXL $1024^2$, 30 steps: s/image (batch 1) & 9.37 & 3.74 & 3.24 \\
+SDXL: s/image (batch 4) & 9.04 & 3.64 & 2.92 \\
+SDXL: s/denoising step & 0.312 & 0.125 & 0.108 \\
+LLM 7B AWQ: tokens/s, batch 1 & 122 & 146 & 155 \\
+LLM 7B AWQ: tokens/s, batch 32 & 2216 & 3183 & 3159 \\
+LLM 14B AWQ: tokens/s, batch 1 & 70 & 83 & 98 \\
+LLM 14B AWQ: tokens/s, batch 32 & 1228 & 1900 & 2100 \\
+LLM 32B AWQ: tokens/s, batch 1 & -- & -- & 55 \\
+LLM 32B AWQ: tokens/s, batch 32 & -- & -- & 1278 \\
+MusicGen small: s per 10 s audio (batch 1) & 4.32 & 10.10 & 10.52 \\
+MusicGen medium: s per 10 s audio (batch 1) & 8.19 & 20.97 & 19.55 \\
+MusicGen medium: s per 10 s audio (batch 4) & 2.39 & 5.05 & 4.97 \\
+LTX-Video: s per 49-frame $704{\times}480$ chunk & 22.0 & 18.6 & 6.1 \\
+Load SDXL to GPU (s) & 1.37 & 2.23 & 2.46 \\
+\bottomrule
+\end{tabular}

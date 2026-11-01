@@ -1,0 +1,303 @@
+{
+  "about": "The language models planetCompute offers (llama.cpp GGUF). Stored in B2 planetcompute-ai under Models/<id>/<file>; each is copied from its original source below and checked by sha256 before it is listed.",
+  "models": [
+    {
+      "id": "qwen2.5-0.5b-q4km",
+      "category": "Text (LLM)",
+      "name": "Qwen2.5 0.5B Instruct (4-bit)",
+      "minRamGB": 2,
+      "file": "qwen2.5-0.5b-q4km.gguf",
+      "bytes": 397807936,
+      "sha256": "c5396e06af294bd101b30dce59131a76d2b773e76950acc870eda801d3ab0515",
+      "source": {
+        "type": "ollama",
+        "model": "qwen2.5:0.5b"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/main/LICENSE"
+    },
+    {
+      "id": "qwen3-4b-instruct-2507",
+      "category": "Text (LLM)",
+      "name": "Qwen3 4B Instruct 2507 (chat, 4-bit)",
+      "minRamGB": 6,
+      "file": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "bytes": 2497281120,
+      "sha256": "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+      "source": {
+        "type": "huggingface",
+        "repo": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+        "file": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+        "revision": "a06e946bb6b655725eafa393f4a9745d460374c9"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507"
+    },
+    {
+      "id": "qwen2.5-coder-7b",
+      "category": "Code",
+      "name": "Qwen2.5-Coder 7B Instruct (coding, 4-bit)",
+      "minRamGB": 8,
+      "file": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+      "bytes": 4683073536,
+      "sha256": "509287f78cb4d4cf6b3843734733b914b2c158e43e22a7f4bf5e963800894d3c",
+      "source": {
+        "type": "huggingface",
+        "repo": "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
+        "file": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+        "revision": "13fb94bfda8c8cf22497dc57b78f391a9acb426a"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct"
+    },
+    {
+      "id": "qwen3-coder-30b-a3b",
+      "category": "Code",
+      "name": "Qwen3-Coder 30B-A3B Instruct (coding, 4-bit)",
+      "minRamGB": 24,
+      "file": "Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf",
+      "bytes": 18556689568,
+      "sha256": "fadc3e5f8d42bf7e894a785b05082e47daee4df26680389817e2093056f088ad",
+      "source": {
+        "type": "huggingface",
+        "repo": "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF",
+        "file": "Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf",
+        "revision": "b17cb02dd882d5b6ab62fc777ad2995f19668350"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct"
+    },
+    {
+      "id": "qwen3-30b-a3b-q4km",
+      "category": "Text (LLM)",
+      "name": "Qwen3 30B-A3B (mixture of experts, 4-bit)",
+      "minRamGB": 24,
+      "file": "qwen3-30b-a3b-q4km.gguf",
+      "bytes": 18556685856,
+      "sha256": "58574f2e94b99fb9e4391408b57e5aeaaaec10f6384e9a699fc2cb43a5c8eabf",
+      "source": {
+        "type": "ollama",
+        "model": "qwen3:30b-a3b"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen3-30B-A3B-Thinking-2507"
+    },
+    {
+      "id": "qwen3-32b-q4km",
+      "category": "Text (LLM)",
+      "name": "Qwen3 32B (4-bit)",
+      "minRamGB": 24,
+      "file": "qwen3-32b-q4km.gguf",
+      "bytes": 20201240160,
+      "sha256": "3291abe70f16ee9682de7bfae08db5373ea9d6497e614aaad63340ad421d6312",
+      "source": {
+        "type": "ollama",
+        "model": "qwen3:32b"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen3-32B/blob/main/LICENSE"
+    },
+    {
+      "id": "deepseek-r1-distill-llama-70b-q4km",
+      "category": "Text (LLM)",
+      "name": "DeepSeek-R1-Distill-Llama-70B (reasoning, 4-bit)",
+      "minRamGB": 48,
+      "file": "deepseek-r1-distill-llama-70b-q4km.gguf",
+      "bytes": 42520395616,
+      "sha256": "4cd576d9aa16961244012223abf01445567b061f1814b57dfef699e4cf8df339",
+      "source": {
+        "type": "ollama",
+        "model": "deepseek-r1:70b"
+      },
+      "license": "MIT and the Llama 3.3 Community License (show \"Built with Llama\")",
+      "agreement": "llama3.3",
+      "licenseUrl": "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
+    },
+    {
+      "id": "zimage-turbo-q4k",
+      "category": "Image",
+      "kind": "image",
+      "family": "zimage",
+      "name": "Z-Image Turbo (4-bit)",
+      "minRamGB": 8,
+      "file": "z_image_turbo-Q4_K.gguf",
+      "bytes": 3864250304,
+      "sha256": "14b375ab4f226bc5378f68f37e899ef3c2242b8541e61e2bc1aff40976086fbd",
+      "source": {
+        "type": "huggingface",
+        "repo": "leejet/Z-Image-Turbo-GGUF",
+        "revision": "c61c0e422dc8b541b7548cf33a4ef8302b0f8085",
+        "file": "z_image_turbo-Q4_K.gguf"
+      },
+      "size": 1024,
+      "steps": 8,
+      "needs": [
+        "flux1-ae",
+        "qwen3-4b-instruct-2507"
+      ],
+      "roles": {
+        "flux1-ae": "vae",
+        "qwen3-4b-instruct-2507": "llm"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/Tongyi-MAI/Z-Image-Turbo",
+      "note": "Modern pictures in 8 steps on smaller machines (a GPU of 4 GB or more, or 8 GB of memory). Shares its text encoder with the chat model Qwen3 4B. 6.5 GB with its parts.",
+      "recommended": true
+    },
+    {
+      "id": "flux1-schnell-q4",
+      "category": "Image",
+      "kind": "image",
+      "family": "flux",
+      "name": "FLUX.1 schnell (4-bit)",
+      "minRamGB": 16,
+      "file": "flux1-schnell-Q4_0.gguf",
+      "bytes": 6688845536,
+      "sha256": "b338a7ab5c81600a54be46c4cf950edb3761a52ae163e419beafd250976fb566",
+      "source": {
+        "type": "huggingface",
+        "repo": "second-state/FLUX.1-schnell-GGUF",
+        "revision": "8c45a2ba25e2d02bd34230989fb54983f39e44ec",
+        "file": "flux1-schnell-Q4_0.gguf"
+      },
+      "size": 768,
+      "steps": 4,
+      "needs": [
+        "flux1-ae",
+        "flux1-clip-l-q8",
+        "flux1-t5xxl-q4k"
+      ],
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/black-forest-labs/FLUX.1-schnell/blob/main/LICENSE.md",
+      "note": "The best pictures here, in 4 steps. Needs 16 GB of memory; best with a GPU of 12 GB or more. 9.7 GB with its parts."
+    },
+    {
+      "id": "flux1-ae",
+      "category": "Image part",
+      "kind": "image-part",
+      "role": "vae",
+      "partOf": "flux1-schnell-q4",
+      "name": "FLUX.1 image decoder (VAE)",
+      "minRamGB": 0,
+      "file": "ae-f16.gguf",
+      "bytes": 167656704,
+      "sha256": "1bed7b05318709e46a8cb9accc211168fc7f0b61ab594661860bbfe4d785cc46",
+      "source": {
+        "type": "huggingface",
+        "repo": "second-state/FLUX.1-schnell-GGUF",
+        "revision": "8c45a2ba25e2d02bd34230989fb54983f39e44ec",
+        "file": "ae-f16.gguf"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/black-forest-labs/FLUX.1-schnell/blob/main/LICENSE.md"
+    },
+    {
+      "id": "flux1-clip-l-q8",
+      "category": "Image part",
+      "kind": "image-part",
+      "role": "clip_l",
+      "partOf": "flux1-schnell-q4",
+      "name": "FLUX.1 text encoder CLIP-L (8-bit)",
+      "minRamGB": 0,
+      "file": "clip_l-Q8_0.gguf",
+      "bytes": 130769600,
+      "sha256": "59cbe002c3e75d2b89d38787e81d12fb4e512fd76176884c470737ad87a1d309",
+      "source": {
+        "type": "huggingface",
+        "repo": "second-state/FLUX.1-schnell-GGUF",
+        "revision": "8c45a2ba25e2d02bd34230989fb54983f39e44ec",
+        "file": "clip_l-Q8_0.gguf"
+      },
+      "license": "MIT",
+      "licenseUrl": "https://huggingface.co/openai/clip-vit-large-patch14"
+    },
+    {
+      "id": "flux1-t5xxl-q4k",
+      "category": "Image part",
+      "kind": "image-part",
+      "role": "t5xxl",
+      "partOf": "flux1-schnell-q4",
+      "name": "FLUX.1 text encoder T5-XXL (4-bit)",
+      "minRamGB": 0,
+      "file": "t5xxl-Q4_K.gguf",
+      "bytes": 2752844256,
+      "sha256": "8b465525114b89011303969a035ef7e335821f13a32c4f31212912fb6511e128",
+      "source": {
+        "type": "huggingface",
+        "repo": "second-state/FLUX.1-schnell-GGUF",
+        "revision": "8c45a2ba25e2d02bd34230989fb54983f39e44ec",
+        "file": "t5xxl-Q4_K.gguf"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/google/t5-v1_1-xxl"
+    },
+    {
+      "id": "wan21-t2v-1.3b-q8",
+      "category": "Video",
+      "kind": "video",
+      "family": "wan",
+      "name": "Wan 2.1 text to video 1.3B (8-bit)",
+      "minRamGB": 16,
+      "file": "Wan2.1-T2V-1.3B-Q8_0.gguf",
+      "bytes": 1535768800,
+      "sha256": "30a44f695b4275a915810120360d6fd26152ec303c2226b5152ec33a93c380e4",
+      "source": {
+        "type": "huggingface",
+        "repo": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF",
+        "revision": "5a512b15fc35d1b67a074cfe55a591be9e9ef9b5",
+        "file": "Wan2.1-T2V-1.3B-Q8_0.gguf"
+      },
+      "width": 832,
+      "height": 480,
+      "steps": 20,
+      "needs": [
+        "wan21-vae",
+        "umt5-xxl-q4km"
+      ],
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B/blob/main/LICENSE.txt",
+      "note": "Short clips (1-3 seconds) from a description. Needs a GPU with 8 GB or more; on a processor alone a clip takes a long time. 5.4 GB with its parts."
+    },
+    {
+      "id": "wan21-vae",
+      "category": "Video part",
+      "kind": "video-part",
+      "role": "vae",
+      "partOf": "wan21-t2v-1.3b-q8",
+      "format": "safetensors",
+      "name": "Wan 2.1 video decoder (VAE)",
+      "minRamGB": 0,
+      "file": "wan_2.1_vae.safetensors",
+      "bytes": 253815318,
+      "sha256": "2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b",
+      "source": {
+        "type": "huggingface",
+        "repo": "Comfy-Org/Wan_2.1_ComfyUI_repackaged",
+        "revision": "123acf1cc74bccbb9bfff8ac1ee72edc08c2341d",
+        "file": "split_files/vae/wan_2.1_vae.safetensors"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/Wan-AI/Wan2.1-T2V-1.3B/blob/main/LICENSE.txt"
+    },
+    {
+      "id": "umt5-xxl-q4km",
+      "category": "Video part",
+      "kind": "video-part",
+      "role": "t5xxl",
+      "partOf": "wan21-t2v-1.3b-q8",
+      "name": "Wan text encoder umt5-xxl (4-bit)",
+      "minRamGB": 0,
+      "file": "umt5-xxl-encoder-Q4_K_M.gguf",
+      "bytes": 3655145312,
+      "sha256": "17cf97a5bbbc60a646d6105b832b6f657ce904a8a1ad970e4b59df0c67584a40",
+      "source": {
+        "type": "huggingface",
+        "repo": "city96/umt5-xxl-encoder-gguf",
+        "revision": "b535255bee98c2b0a59ea7c0ae2dcd0c6657b3b7",
+        "file": "umt5-xxl-encoder-Q4_K_M.gguf"
+      },
+      "license": "Apache-2.0",
+      "licenseUrl": "https://huggingface.co/google/umt5-xxl"
+    }
+  ]
+}

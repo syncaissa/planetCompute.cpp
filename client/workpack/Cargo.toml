@@ -1,0 +1,16 @@
+[package]
+name = "workpack"
+version = "0.1.0"
+edition = "2021"
+description = "planetCompute WorkPacks: kernels, the binary pack format, and the SherpaHub state machine (docs/SHERPAHUB.md)"
+
+# One dependency on purpose: this crate builds and tests in seconds, apart from the program (llama.cpp, Tauri).
+[dependencies]
+sha2 = "0.10"
+
+[profile.release]
+codegen-units = 1
+lto = true
+
+[profile.test]
+opt-level = 3

@@ -1,0 +1,65 @@
+# Diagnosis only (2026-10-22): stable-diffusion.cpp's Metal backend fails on the macOS CI runner with
+#   ggml_metal_buffer_get_id: error: tensor 'ggml_runner_final_result_tensor' buffer is nil
+# (the app then falls back to the CPU). This runs one small picture per variant to find which part fails on Metal:
+# the pinned commit (the app's) with each stage moved to the CPU in turn, and the newest release.
+name: sd.cpp Metal diagnosis
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/sd-metal-diag.yml"]
+jobs:
+  metal:
+    runs-on: macos-15
+    steps:
+      - name: Pinned engine (same cache as the client build)
+        id: sdcache
+        uses: actions/cache@v4
+        with: { path: sd-bin, key: "sd-a1ded76da581-macos-aarch64-v1" }
+      - name: Build engines (pinned if not cached, and the newest release)
+        shell: bash
+        run: |
+          build() {  # tag commit out
+            git clone -q --branch "$1" --depth 1 --recurse-submodules --shallow-submodules https://github.com/leejet/stable-diffusion.cpp "$RUNNER_TEMP/$1"
+            echo "$1 = $(git -C "$RUNNER_TEMP/$1" rev-parse HEAD)"
+            cmake -S "$RUNNER_TEMP/$1" -B "$RUNNER_TEMP/$1/b" -DCMAKE_BUILD_TYPE=Release -DSD_BUILD_EXAMPLES=ON -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DSD_SERVER_BUILD_FRONTEND=OFF -DSD_METAL=ON > /dev/null
+            cmake --build "$RUNNER_TEMP/$1/b" --config Release --target sd-cli -j 4 > /dev/null
+            cp "$(find "$RUNNER_TEMP/$1/b" -type f -name sd-cli | head -1)" "$2"
+          }
+          mkdir -p sd-bin bins
+          [ -f sd-bin/sd-cli ] || build master-945-a1ded76 sd-bin/sd-cli
+          cp sd-bin/sd-cli bins/pinned
+          NEW=$(curl -s https://api.github.com/repos/leejet/stable-diffusion.cpp/releases/latest | python3 -c "import json,sys;print(json.load(sys.stdin)['tag_name'])")
+          echo "newest release: $NEW"; echo "NEW=$NEW" >> "$GITHUB_ENV"
+          build "$NEW" bins/newest
+      - name: Model (Stable Diffusion 1.5, 8-bit, as in the library)
+        shell: bash
+        run: |
+          curl -sL -o sd15.gguf https://huggingface.co/second-state/stable-diffusion-v1-5-GGUF/resolve/031b5f5df991f511b3f5fa8fed6d99048ababb69/stable-diffusion-v1-5-pruned-emaonly-Q8_0.gguf
+          echo "d0555243938c62faeefb4ac93f6c7a053ad373a4290c5256bce229aeb193bf94  sd15.gguf" | shasum -a 256 -c
+          system_profiler SPDisplaysDataType | sed -n 1,20p
+      - name: Variants
+        shell: bash
+        run: |
+          run() {  # name binary extra-args...
+            local name=$1 bin=$2; shift 2
+            local t0=$(date +%s)
+            if "bins/$bin" -m sd15.gguf -p "a red apple on a wooden table" -W 256 -H 256 --steps 2 --seed 42 -t 3 -o "out-$name.png" -v "$@" > "log-$name.txt" 2>&1 && [ -s "out-$name.png" ]; then r=OK; else r=FAIL; fi
+            echo "$r  $name  ($(( $(date +%s) - t0 )) s)  $*" | tee -a summary.txt
+            if [ $r = FAIL ]; then grep -nE 'error|Error|nil|fail|backend|Metal|compute|running|sampling|decode|encode|cond' "log-$name.txt" | tail -25 || true; fi
+          }
+          run default            pinned
+          run autofit-off        pinned --auto-fit off
+          run te-cpu             pinned --backend te=cpu
+          run vae-cpu            pinned --backend vae=cpu
+          run te-vae-cpu         pinned --backend te=cpu,vae=cpu
+          run diffusion-cpu      pinned --backend diffusion=cpu
+          run params-ram         pinned --params-backend cpu
+          run vae-tiling         pinned --vae-tiling
+          run cpu                pinned --backend cpu
+          run newest-default     newest
+          run newest-autofit-off newest --auto-fit off
+          echo; echo "== summary (newest = $NEW)"; cat summary.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: metal-diag, path: "log-*.txt\nsummary.txt\nout-*.png" }

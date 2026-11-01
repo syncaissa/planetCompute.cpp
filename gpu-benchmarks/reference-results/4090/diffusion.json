@@ -1,0 +1,46 @@
+{
+ "info": {
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "mem_gb": 23.5,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.9"
+ },
+ "B3": {
+  "download_s": 24.266180753707886,
+  "bytes": 7108524699,
+  "load_to_gpu_s": 2.2277793884277344
+ },
+ "B1_batch1": {
+  "s_per_batch": [
+   3.7440922260284424,
+   3.7539055347442627,
+   3.759758472442627
+  ],
+  "s_per_image": 3.7440922260284424,
+  "s_per_step": 0.12480307420094808
+ },
+ "B1_batch4": {
+  "s_per_batch": [
+   14.55525016784668,
+   14.668009519577026
+  ],
+  "s_per_image": 3.63881254196167,
+  "s_per_step": 0.4851750055948893
+ },
+ "B4_same_gpu_rerun": {
+  "png_sha_equal": true,
+  "max_abs_latent_diff": 0.0
+ },
+ "B7_diffusion_audit": {
+  "s_per_audit_step": 0.15846738815307618,
+  "same_gpu_rel_err": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "fraction_of_generation": 0.04232464869626648
+ }
+}

@@ -1,0 +1,77 @@
+# Sample pictures from the image engine the app carries (stable-diffusion.cpp at the pinned commit, CPU build, the
+# same cache as the client build) with Stable Diffusion 1.5 from the PlanetCompute library: 512 x 512, 20 steps.
+# The pictures are kept as the run's artifact "sample-pictures" (shown at https://planetcompute.ai/temp/).
+name: Sample pictures
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/sample-pictures.yml"]
+jobs:
+  pictures:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Engine (same cache as the client build)
+        id: sdcache
+        uses: actions/cache@v4
+        with: { path: sd-bin, key: "sd-a1ded76da581-linux-x86_64-v1" }
+      - name: Build the engine if not cached
+        if: ${{ steps.sdcache.outputs.cache-hit != 'true' }}
+        run: |
+          git clone -q --branch master-945-a1ded76 --depth 1 --recurse-submodules --shallow-submodules https://github.com/leejet/stable-diffusion.cpp "$RUNNER_TEMP/sd"
+          cmake -S "$RUNNER_TEMP/sd" -B "$RUNNER_TEMP/sd/b" -DCMAKE_BUILD_TYPE=Release -DSD_BUILD_EXAMPLES=ON -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DSD_SERVER_BUILD_FRONTEND=OFF > /dev/null
+          cmake --build "$RUNNER_TEMP/sd/b" --target sd-cli -j 4 > /dev/null
+          mkdir -p sd-bin; cp "$(find "$RUNNER_TEMP/sd/b" -type f -name sd-cli | head -1)" sd-bin/sd-cli
+      - name: Model (Stable Diffusion 1.5, 8-bit, SHA-256 checked)
+        run: |
+          curl -sL -o sd15.gguf https://huggingface.co/second-state/stable-diffusion-v1-5-GGUF/resolve/031b5f5df991f511b3f5fa8fed6d99048ababb69/stable-diffusion-v1-5-pruned-emaonly-Q8_0.gguf
+          echo "d0555243938c62faeefb4ac93f6c7a053ad373a4290c5256bce229aeb193bf94  sd15.gguf" | sha256sum -c
+      - name: Pictures
+        run: |
+          mkdir -p out
+          n=0
+          while IFS='|' read -r name prompt; do
+            n=$((n + 1)); t0=$(date +%s)
+            ./sd-bin/sd-cli -m sd15.gguf -p "$prompt" -n "blurry, low quality, deformed, text, watermark" -W 512 -H 512 --steps 20 --cfg-scale 7 --seed $((1000 + n)) -t 4 -o "out/$name.png" > "out/$name.log" 2>&1 || echo "FAILED $name"
+            echo "$name: $(( $(date +%s) - t0 )) s  $prompt" | tee -a out/pictures.txt
+          done <<'EOF'
+          sd15-lighthouse|a lighthouse on a rocky coast at sunset, dramatic sky, oil painting
+          sd15-apple|a red apple on a wooden table, soft window light, photograph
+          sd15-city|a futuristic city at night with neon lights and rain, digital art
+          sd15-cat|a fluffy orange cat sleeping on a windowsill, cozy, photograph
+          EOF
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with: { name: sample-pictures, path: out }
+  video:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 300
+    steps:
+      - name: Engine (same cache as the client build)
+        id: sdcache
+        uses: actions/cache@v4
+        with: { path: sd-bin, key: "sd-a1ded76da581-linux-x86_64-v1" }
+      - name: Build the engine if not cached
+        if: ${{ steps.sdcache.outputs.cache-hit != 'true' }}
+        run: |
+          git clone -q --branch master-945-a1ded76 --depth 1 --recurse-submodules --shallow-submodules https://github.com/leejet/stable-diffusion.cpp "$RUNNER_TEMP/sd"
+          cmake -S "$RUNNER_TEMP/sd" -B "$RUNNER_TEMP/sd/b" -DCMAKE_BUILD_TYPE=Release -DSD_BUILD_EXAMPLES=ON -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DSD_SERVER_BUILD_FRONTEND=OFF > /dev/null
+          cmake --build "$RUNNER_TEMP/sd/b" --target sd-cli -j 4 > /dev/null
+          mkdir -p sd-bin; cp "$(find "$RUNNER_TEMP/sd/b" -type f -name sd-cli | head -1)" sd-bin/sd-cli
+      - name: Models (Wan 2.1 1.3B 8-bit, its VAE, umt5-xxl 4-bit; as in the library, SHA-256 checked)
+        run: |
+          curl -sL -o wan.gguf https://huggingface.co/samuelchristlie/Wan2.1-T2V-1.3B-GGUF/resolve/5a512b15fc35d1b67a074cfe55a591be9e9ef9b5/Wan2.1-T2V-1.3B-Q8_0.gguf
+          curl -sL -o vae.safetensors https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/123acf1cc74bccbb9bfff8ac1ee72edc08c2341d/split_files/vae/wan_2.1_vae.safetensors
+          curl -sL -o umt5.gguf https://huggingface.co/city96/umt5-xxl-encoder-gguf/resolve/b535255bee98c2b0a59ea7c0ae2dcd0c6657b3b7/umt5-xxl-encoder-Q4_K_M.gguf
+          printf '%s  wan.gguf\n%s  vae.safetensors\n%s  umt5.gguf\n' 30a44f695b4275a915810120360d6fd26152ec303c2226b5152ec33a93c380e4 2fc39d31359a4b0a64f55876d8ff7fa8d780956ae2cb13463b0223e15148976b 17cf97a5bbbc60a646d6105b832b6f657ce904a8a1ad970e4b59df0c67584a40 | sha256sum -c
+      - name: Video
+        run: |
+          mkdir -p out; t0=$(date +%s)
+          P="a small sailing boat on a calm lake at sunrise, mountains in the background, gentle waves"
+          ./sd-bin/sd-cli -M vid_gen --diffusion-model wan.gguf --vae vae.safetensors --t5xxl umt5.gguf -p "$P" \
+            --cfg-scale 6.0 --sampling-method euler --flow-shift 3.0 -W 480 -H 272 --video-frames 33 --fps 16 --steps 20 \
+            --seed 7 --diffusion-fa -t 4 -o out/wan-boat.webm > out/wan-boat.log 2>&1 || echo FAILED
+          echo "wan-boat: $(( $(date +%s) - t0 )) s  $P" | tee out/video.txt
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with: { name: sample-video, path: out }

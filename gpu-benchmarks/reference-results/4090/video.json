@@ -1,0 +1,16 @@
+{
+ "info": {
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "mem_gb": 23.5,
+  "torch": "2.4.1+cu124",
+  "cuda": "12.4",
+  "capability": "8.9"
+ },
+ "B3": {
+  "download_s": 77.66586494445801,
+  "bytes": 28420603092,
+  "load_s": 14.90843915939331,
+  "cpu_offload": true
+ },
+ "B1_chunk_49f_704x480_30steps_s": 18.59218692779541
+}
