@@ -2191,6 +2191,11 @@ sign-in it can ask again; 30 sign-ins in a row all succeed with no hold email; w
 holds the address; the operator clear refuses a wrong signature and clears with the right one). The same test on the
 code before this change: 5 of these fail, as expected. Live (site cdf96d02): the signed clear answered ok, a wrong
 signature got 403.
+Found live afterwards: right after that deploy the rate limiter (a Durable Object) still ran the previous code for a
+while and silently ignored the reset, so the clear reported ok but changed nothing (one network stayed at 40/40).
+Fixes: the reset now requires the limiter's confirmation (the clear answers 502 otherwise), and a signed
+`POST /api/ops/auth-counters` (same signature scheme) lists the counters per IP and network. After the next deploy the
+clear was read back: only the site-wide counters remained; a later sign-in left no per-network counters behind.
 
 ## Our runs
 

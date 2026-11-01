@@ -3748,12 +3748,16 @@ async function handleApi(request, env, url) {
   try {
     // The operator clears every network's sign-in counters (e.g. after testing locked a network out). Signed with
     // HB_SERVER_SECRET over "pc-ops|auth-reset|<unix minute>", accepted for the current or the previous minute only.
-    if (path === "/api/ops/auth-reset" && request.method === "POST") {
+    if ((path === "/api/ops/auth-reset" || path === "/api/ops/auth-counters") && request.method === "POST") {
       if (!env.HB_SERVER_SECRET) return json({ error: "Not configured." }, 503);
       const m = Math.floor(now() / 60), sig = request.headers.get("x-pc-ops") || "";
-      const good = [await hmacHexKey(env.HB_SERVER_SECRET, `pc-ops|auth-reset|${m}`), await hmacHexKey(env.HB_SERVER_SECRET, `pc-ops|auth-reset|${m - 1}`)];
+      const act = path.split("/").pop(), good = [await hmacHexKey(env.HB_SERVER_SECRET, `pc-ops|${act}|${m}`), await hmacHexKey(env.HB_SERVER_SECRET, `pc-ops|${act}|${m - 1}`)];
       if (!good.some((g) => sameHex(sig, g))) return json({ error: "Not allowed." }, 403);
-      await authReset(env, request, true);
+      if (path === "/api/ops/auth-counters") {
+        const r = await env.CONTACT.get(env.CONTACT.idFromName("auth")).fetch("https://contact.internal/take", { method: "POST", body: JSON.stringify({ kind: "auth-counters" }) });
+        return json({ ...(await r.json()), your_ip: request.headers.get("cf-connecting-ip") || "" });
+      }
+      try { await authReset(env, request, true); } catch (e) { return json({ ok: false, error: String(e && e.message) }, 502); }
       return json({ ok: true, cleared: "sign-in counters of every network" });
     }
     if (path === "/api/auth/start" && request.method === "POST") {
@@ -13497,8 +13501,10 @@ const AUTH_GLOBAL = { start: [[600, 60000]], verify: [[600, 120000]], save: [[60
 async function authReset(env, request, all) {
   if (!env.CONTACT) return;
   const ip = request.headers.get("cf-connecting-ip") || "none";
-  await env.CONTACT.get(env.CONTACT.idFromName("auth")).fetch("https://contact.internal/take", { method: "POST",
+  const r = await env.CONTACT.get(env.CONTACT.idFromName("auth")).fetch("https://contact.internal/take", { method: "POST",
     body: JSON.stringify({ kind: "auth-reset", all: !!all, keys: ["ip:" + ip, "net:" + contactNetKey(ip)] }) });
+  // the limiter must confirm it (2026-11-01: right after a deploy the limiter still ran the old code and ignored the reset)
+  if (!(await r.json().catch(() => ({}))).ok) throw new Error("the sign-in limiter did not confirm the reset");
 }
 async function authLimit(env, request, what, ipOnly, extraKeys) {
   if (!env.CONTACT) return null;
@@ -13525,6 +13531,13 @@ export class ContactGuard {
   constructor(state) { this.state = state; }
   async fetch(request) {
     const b = await request.json(), t = Date.now() / 1000;
+    if (b.kind === "auth-counters") {                     // operator: the sign-in counters now (key -> requests in 10 min / 24 h)
+      const t = Date.now() / 1000, out = [];
+      for (const w of ["start", "verify"]) for (const [k, v] of await this.state.storage.list({ prefix: "k:" + w + ":" }))
+        out.push({ key: k.slice(2), last10min: (v || []).filter((x) => t - x < 600).length, last24h: (v || []).filter((x) => t - x < 86400).length });
+      out.sort((a, b) => b.last10min - a.last10min || b.last24h - a.last24h);
+      return Response.json({ ok: true, limits: { start: AUTH_LIMITS.start, verify: AUTH_LIMITS.verify }, counters: out.slice(0, 40) });
+    }
     if (b.kind === "auth-reset") {                        // a successful sign-in (or the operator): forget sign-in counters
       const whats = ["start", "verify"];
       if (b.all) {                                         // operator: every network's counters (never the site-wide ":all" ones)
