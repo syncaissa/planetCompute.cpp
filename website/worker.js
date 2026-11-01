@@ -3335,10 +3335,57 @@ async function stats(env) {
   return { users: c.users || 0, devices: c.devices || 0, contributor_sessions: c.contributor_sessions || 0 };
 }
 
+// Notifications to every signed-in user (user 2026-11-01): table <prefix>user-broadcast, one partition (pk "B"), sort
+// key "<created_at>#<id>", fields id, created_at, updated_at, by, active (true/false), title, message. Admins add them
+// and switch them on or off (admin tab Notifications); /api/me/broadcasts gives the active ones to a signed-in user,
+// shown in a pop-up with an x on the website and in the program.
+const broadcastTable = (env) => PFX(env) + "user-broadcast";
+let bcCache = { at: 0, rows: null };
+async function listBroadcasts(env) {
+  const out = [];
+  let start;
+  do {
+    const r = await ddb(env, "Query", { TableName: broadcastTable(env), KeyConditionExpression: "pk = :p", ExpressionAttributeValues: { ":p": S_("B") },
+      ScanIndexForward: false, ...(start ? { ExclusiveStartKey: start } : {}) });
+    for (const it of r.Items || []) { const b = U(it); out.push({ id: b.id, sk: b.sk, created_at: b.created_at || "", updated_at: b.updated_at || "", by: b.by || "",
+      active: b.active === true, title: b.title || "", message: b.message || "" }); }
+    start = r.LastEvaluatedKey;
+  } while (start);
+  return out;
+}
+async function activeBroadcasts(env) {               // what users see; cached a minute per Worker instance
+  if (bcCache.rows && Date.now() - bcCache.at < 60000) return bcCache.rows;
+  const rows = (await listBroadcasts(env)).filter((b) => b.active).map((b) => ({ id: b.id, created_at: b.created_at, title: b.title, message: b.message }));
+  bcCache = { at: Date.now(), rows };
+  return rows;
+}
+async function adminBroadcasts(env, adminEmail, path, body) {
+  if (path === "/api/admin/broadcasts") return json({ ok: true, table: broadcastTable(env), rows: await listBroadcasts(env) });
+  if (path === "/api/admin/broadcasts/add") {
+    const title = String(body.title || "").trim().slice(0, 150), message = String(body.message || "").trim();
+    if (!message) return json({ error: "Write the notification text." }, 400);
+    if (message.length > 2000) return json({ error: "The notification text is too long (at most 2,000 characters)." }, 400);
+    const t = iso(), id = hex(randomBytes(6));
+    await ddb(env, "PutItem", { TableName: broadcastTable(env), Item: M({ pk: "B", sk: `${t}#${id}`, id, created_at: t, updated_at: t, by: adminEmail,
+      active: body.active !== false, title, message }) });
+    bcCache = { at: 0, rows: null };
+    return json({ ok: true, rows: await listBroadcasts(env) });
+  }
+  if (path === "/api/admin/broadcasts/set") {
+    const sk = String(body.sk || "");
+    if (!/^\d{4}-\d\d-\d\dT[\d:.]+Z#[0-9a-f]{12}$/.test(sk)) return json({ error: "Bad notification." }, 400);
+    await ddb(env, "UpdateItem", { TableName: broadcastTable(env), Key: M({ pk: "B", sk }), ConditionExpression: "attribute_exists(pk)",
+      UpdateExpression: "SET active = :a, updated_at = :t, updated_by = :b", ExpressionAttributeValues: M({ ":a": body.active === true, ":t": iso(), ":b": adminEmail }) });
+    bcCache = { at: 0, rows: null };
+    return json({ ok: true, rows: await listBroadcasts(env) });
+  }
+  return null;
+}
 async function handleAdmin(env, me, path, method, body, url) {
   const myProf = await getItem(env, `USER#${me.user_id}`, "PROFILE");
   const myEmails = (await profile(env, me.user_id)).emails.map((e) => e.email);
   if (!isAdmin(env, myProf, myEmails)) return json({ error: "Admins only." }, 403);
+  if (path.startsWith("/api/admin/broadcasts")) { const r = await adminBroadcasts(env, myProf.primary_email || myEmails[0] || "", path, body || {}); if (r) return r; }
   if (path === "/api/admin/sherpa" && method === "GET") return sherpaAdmin(env);
   if (path.startsWith("/api/admin/sherpa/")) return sherpaAdminRoute(env, myProf.primary_email || myEmails[0] || "", path, method, body, url);
   const ledgerResponse = path.startsWith("/api/admin/ledger-options") ? await handleLedgerAdmin(env, me, myProf.primary_email || myEmails[0] || "", path, method, body) : null;
@@ -3833,6 +3880,7 @@ async function handleApi(request, env, url) {
     if (me.scope === "worker" && !WORKER_PATHS.some(([m, p]) => m === request.method && p === path))
       return json({ error: "This sign-in is for a server's program only." }, 403);
     if (path === "/api/me" && request.method === "GET") return json(await profile(env, me.user_id));
+    if (path === "/api/me/broadcasts" && request.method === "GET") return json({ ok: true, rows: await activeBroadcasts(env).catch(() => []) });
     if (path === "/api/me/balance" && request.method === "GET") return json(await myBalance(env, me.user_id));
     // Receive Compute on a phone (Express mode): the download links by email, to open on a laptop or PC; 3 a day
     if (path === "/api/me/email-download-link" && request.method === "POST") {
@@ -7116,8 +7164,36 @@ ${WORKPACK_SRC}
     if (me) { renderAccount(); view("vAccount"); $("skipProfile").style.display = "none"; $("skipBar").style.display = "none"; } else { view("vEmail"); setTimeout(function () { $("authEmail").focus(); }, 30); }
   }
   function closeAuth() { startAfterSignIn = false; $("signinWhy").style.display = "none"; $("signinStd").style.display = ""; authModal.classList.remove("open"); if (!modal.classList.contains("open")) document.body.style.overflow = ""; }
+  // Notifications (admin tab Notifications, table user-broadcast): the active ones in a pop-up with an x, once per browser
+  // session, and again when the list of active notifications changes
+  function pcShowBroadcasts(rows) {
+    if (!rows || !rows.length) return;
+    var key = "pc-bc-seen", ids = rows.map(function (r) { return r.id; }).join(",");
+    try { if (sessionStorage.getItem(key) === ids) return; } catch (e) {}
+    if (document.getElementById("pcBroadcast")) return;
+    var wrap = document.createElement("div"); wrap.id = "pcBroadcast"; wrap.setAttribute("role", "dialog"); wrap.setAttribute("aria-modal", "true"); wrap.setAttribute("aria-label", "Notifications");
+    wrap.style.cssText = "position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px";
+    var box = document.createElement("div");
+    box.style.cssText = "position:relative;max-width:540px;width:100%;max-height:80vh;overflow:auto;background:#0f1a2e;color:#e8eefb;border:1px solid #2b3b5c;border-radius:10px;padding:18px 22px 10px;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;box-shadow:0 18px 50px rgba(0,0,0,.5)";
+    var x = document.createElement("button"); x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Close"); x.title = "Close";
+    x.style.cssText = "position:absolute;top:6px;right:10px;background:none;border:0;color:inherit;font-size:28px;line-height:1;cursor:pointer;padding:4px 8px";
+    var h = document.createElement("h3"); h.textContent = rows.length === 1 ? "Notification" : "Notifications (" + rows.length + ")"; h.style.cssText = "margin:0 34px 8px 0;font-size:18px";
+    box.appendChild(x); box.appendChild(h);
+    rows.forEach(function (r) {
+      var it = document.createElement("div"); it.style.cssText = "border-top:1px solid #2b3b5c;padding:10px 0";
+      if (r.title) { var t = document.createElement("div"); t.textContent = r.title; t.style.fontWeight = "700"; it.appendChild(t); }
+      var m = document.createElement("div"); m.textContent = r.message; m.style.whiteSpace = "pre-wrap"; it.appendChild(m);
+      var d = document.createElement("div"); d.textContent = r.created_at ? new Date(r.created_at).toLocaleString() : ""; d.style.cssText = "opacity:.6;font-size:12px;margin-top:4px"; it.appendChild(d);
+      box.appendChild(it);
+    });
+    function close() { wrap.remove(); document.removeEventListener("keydown", onKey); try { sessionStorage.setItem(key, ids); } catch (e) {} }
+    function onKey(e) { if (e.key === "Escape") close(); }
+    x.onclick = close; wrap.addEventListener("click", function (e) { if (e.target === wrap) close(); }); document.addEventListener("keydown", onKey);
+    wrap.appendChild(box); document.body.appendChild(wrap); x.focus();
+  }
   function setMe(p) {
     me = p;
+    if (me) api("/api/me/broadcasts").then(function (r) { if (r.ok && r.data) pcShowBroadcasts(r.data.rows); });
     var b = $("acctBtn");
     b.classList.toggle("in", !!me);
     $("adminLink").style.display = me && me.is_admin ? "" : "none";
@@ -7753,6 +7829,7 @@ tr:hover td { background: rgba(var(--fg-rgb),.03); }
       <button class="tab" data-tab="servers">Servers</button>
       <button class="tab" data-tab="workhorses">Workhorses</button>
       <button class="tab" data-tab="sherpahubs">SherpaHubs</button>
+      <button class="tab" data-tab="broadcast">Notifications</button>
       <button class="tab" id="reload" style="margin-left:auto">Refresh</button>
     </div>
 
@@ -8074,6 +8151,24 @@ tr:hover td { background: rgba(var(--fg-rgb),.03); }
       <div class="tbl-wrap"><table id="t-sherpajobs"></table></div>
       <div class="panel" id="sh-detail" style="display:none"></div>
       <p class="note">Jobs and their logs are kept by each SherpaHub's room on the site (the last 100 per hub); picture results are kept privately in B2 (sherpa_jobs/). Install or update a SherpaHub server from the admin machine: <code>python3 scripts/startWorkhorseOnAnyServer.py --server-id &lt;id&gt; --boot</code>.</p>
+    </section>
+    <section class="view" id="v-broadcast">
+      <div class="panel">
+        <h3>Add a notification</h3>
+        <p class="muted" style="margin-top:0">Active notifications appear in a pop-up with an × for every signed-in user, on the website and in the program (once per browser session, and again when the list changes).</p>
+        <input class="field" id="bcTitle" maxlength="150" placeholder="Title (optional)" style="width:100%;margin-bottom:8px">
+        <textarea class="field" id="bcText" maxlength="2000" rows="4" placeholder="Notification text" style="width:100%"></textarea>
+        <div class="row2" style="margin-top:8px"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="bcActive" checked> Active</label>
+          <button class="btn btn-gold" id="bcAdd">Add</button></div>
+        <div class="msg" id="bcOut"></div>
+      </div>
+      <div class="bar">
+        <input type="search" id="q-bc" placeholder="Search the title or text">
+        <button class="chip on" data-bcf="all">All</button><button class="chip" data-bcf="active">Active</button><button class="chip" data-bcf="inactive">Inactive</button>
+        <span class="count" id="c-bc"></span>
+      </div>
+      <div class="tbl-wrap"><table id="t-bc"></table></div>
+      <p class="note" id="bcNote">Table planetcompute-ai-user-broadcast, newest first. Switching a notification off hides it at once (users' pages check about once a minute).</p>
     </section>
     <section class="view" id="v-bugs">
       <div class="bar">
@@ -8607,6 +8702,65 @@ tr:hover td { background: rgba(var(--fg-rgb),.03); }
   $("q-bugs").onkeydown = function (e) { if (e.key === "Enter") search(); };
   chips();
   document.querySelectorAll('.tab[data-tab="bugs"]').forEach(function (b) { b.addEventListener("click", function () { if (!st.loaded) load(); }); });
+  $("reload").addEventListener("click", function () { if (st.loaded) load(); });
+})();
+// ---- Notifications (table user-broadcast): add, switch on/off, filter, search ----
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function api(path, body) {
+    return fetch(path, { method: body ? "POST" : "GET", credentials: "same-origin", headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, data: j }; }); });
+  }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  var st = { rows: [], f: "all", loaded: false };
+  function say(t, kind) { var m = $("bcOut"); m.className = "msg" + (kind ? " " + kind : ""); m.textContent = t || ""; }
+  function load() {
+    api("/api/admin/broadcasts").then(function (x) {
+      if (!x.ok) { say(x.data.error || "Could not load the notifications.", "err"); return; }
+      st.rows = x.data.rows || []; st.loaded = true; if (x.data.table) $("bcNote").firstChild.textContent = "Table " + x.data.table + ", newest first. Switching a notification off hides it at once (users' pages check about once a minute).";
+      table();
+    });
+  }
+  function table() {
+    var q = ($("q-bc").value || "").trim().toLowerCase();
+    var rows = st.rows.filter(function (r) { return (st.f === "all" || (st.f === "active") === r.active) && (!q || (r.title + " " + r.message).toLowerCase().indexOf(q) >= 0); });
+    var t = $("t-bc"); t.innerHTML = "";
+    var hr = el("tr"); ["Added", "Status", "Title", "Notification", "By", ""].forEach(function (h) { hr.appendChild(el("th", "", h)); }); t.appendChild(hr);
+    rows.forEach(function (r) {
+      var tr = el("tr");
+      tr.appendChild(el("td", "", r.created_at ? new Date(r.created_at).toLocaleString() : ""));
+      tr.appendChild(el("td", "", r.active ? "Active" : "Inactive"));
+      tr.appendChild(el("td", "", r.title));
+      var td = el("td", "", r.message); td.style.whiteSpace = "pre-wrap"; td.style.maxWidth = "520px"; tr.appendChild(td);
+      tr.appendChild(el("td", "", r.by));
+      var b = el("button", "chip", r.active ? "Make inactive" : "Make active"), c = el("td"); c.appendChild(b); tr.appendChild(c);
+      b.onclick = function () {
+        b.disabled = true;
+        api("/api/admin/broadcasts/set", { sk: r.sk, active: !r.active }).then(function (x) {
+          b.disabled = false;
+          if (!x.ok) { say(x.data.error || "Could not change it.", "err"); return; }
+          st.rows = x.data.rows || st.rows; say((r.active ? "Made inactive: " : "Made active: ") + (r.title || r.message.slice(0, 60)), "good"); table();
+        });
+      };
+      t.appendChild(tr);
+    });
+    $("c-bc").textContent = rows.length + " of " + st.rows.length + " notification" + (st.rows.length === 1 ? "" : "s") + " · " + st.rows.filter(function (r) { return r.active; }).length + " active";
+  }
+  $("bcAdd").onclick = function () {
+    var text = $("bcText").value.trim();
+    if (!text) { say("Write the notification text.", "err"); return; }
+    $("bcAdd").disabled = true; say("Adding…");
+    api("/api/admin/broadcasts/add", { title: $("bcTitle").value, message: text, active: $("bcActive").checked }).then(function (x) {
+      $("bcAdd").disabled = false;
+      if (!x.ok) { say(x.data.error || "Could not add it.", "err"); return; }
+      st.rows = x.data.rows || []; $("bcTitle").value = ""; $("bcText").value = ""; $("bcActive").checked = true; say("Added.", "good"); table();
+    });
+  };
+  document.querySelectorAll(".chip[data-bcf]").forEach(function (b) {
+    b.onclick = function () { st.f = b.getAttribute("data-bcf"); document.querySelectorAll(".chip[data-bcf]").forEach(function (x) { x.classList.toggle("on", x === b); }); table(); };
+  });
+  $("q-bc").oninput = table;
+  document.querySelectorAll('.tab[data-tab="broadcast"]').forEach(function (b) { b.addEventListener("click", function () { if (!st.loaded) load(); }); });
   $("reload").addEventListener("click", function () { if (st.loaded) load(); });
 })();
 </script>

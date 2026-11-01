@@ -415,6 +415,13 @@ def table_definitions(prefix):
             "Tags": tags("model-agreements"),
         },
         {
+            # notifications shown to every signed-in user (website and program); one partition, newest first
+            "TableName": f"{prefix}user-broadcast", **common,
+            "AttributeDefinitions": [S("pk"), S("sk")],
+            "KeySchema": keys("pk", "sk"),
+            "Tags": tags("user-broadcast"),
+        },
+        {
             "TableName": f"{prefix}models", **common,
             "AttributeDefinitions": [S(a) for a in ("model_id", "sk", "category", "cat_sk")],
             "KeySchema": keys("model_id", "sk"),

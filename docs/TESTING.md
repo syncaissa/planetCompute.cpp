@@ -2197,10 +2197,27 @@ Fixes: the reset now requires the limiter's confirmation (the clear answers 502 
 `POST /api/ops/auth-counters` (same signature scheme) lists the counters per IP and network. After the next deploy the
 clear was read back: only the site-wide counters remained; a later sign-in left no per-network counters behind.
 
+## 104. Notifications to every signed-in user (2026-11-01)
+
+Table `<prefix>user-broadcast` (`database/CreateTables.py`; one partition pk "B", sort key "<created_at>#<id>"; fields
+id, created_at, updated_at, by, active, title, message). Admin page, tab Notifications: add a notification (title,
+text, active), All / Active / Inactive filters, search, and Make active / Make inactive per row
+(`/api/admin/broadcasts`, `/add`, `/set`, admins only). `/api/me/broadcasts` (signed in) gives the active ones (id,
+time, title, text). They appear in a pop-up with an × on the website (when the page knows the user is signed in) and in
+the program after it signs in; closed, it stays closed for that browser session and opens again when the list of
+active notifications changes. Users' pages see a change within about a minute (a per-instance cache; an admin change
+clears it).
+Steps: `node scripts/test_broadcasts.mjs website/worker.js client/ui/index.html` with AWS keys (the given worker's own
+functions against the TEST table pctest-ai-user-broadcast; its rows are removed afterwards; the pop-up run in a
+minimal page). Result (2026-11-01): 19/19. Live (site 3635b3bf): the table planetcompute-ai-user-broadcast created
+(point-in-time recovery, deletion protection); /api/me/broadcasts and /api/admin/broadcasts answer 401 when not signed
+in; the admin page has the tab. The program shows the pop-up from the next release.
+
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-01 16:40 | 104 notifications (table user-broadcast, admin tab, pop-up on site and program) | site 3635b3bf | 19/19; routes 401 when signed out |
 | 2026-11-01 16:10 | 103 sign-in resets the counters; signed operator clear | site cdf96d02 | 8/8; live clear ok |
 | 2026-11-01 15:55 | 102 10 code requests a day per address, then a 24-hour hold with one email | site (this commit) | 10/10 |
 | 2026-11-01 15:35 | 101 Turnstile on sign-in code requests; code email names who asked | site e9590176 | 10/10; live: browser request without the check refused, no code sent |
