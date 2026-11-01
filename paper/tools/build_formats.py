@@ -148,7 +148,7 @@ def preprocess(source, labels):
     # Title block and the footer block are produced by the templates.
     t = find_env(body, "center")
     body = body[:t[0]] + body[t[1]:]
-    body = body[:body.rindex(r"\vfill")]
+    body = body[:body.rindex(r"\bibliographystyle")]   # references come from citeproc; footer from the templates
 
     # Plain-text name macros (coin, ticker, chain): expand in place so they survive pandoc and equations.
     for name in ("cointicker", "coin", "chain"):
@@ -300,8 +300,8 @@ def pandoc_html(assets):
 
 def title_block(meta):
     return f"""<header class="pc-title">
-<h1 class="pc-h1">PlanetCompute: Toward a Verifiable AI Grid<br>of Idle Browsers and Desktops</h1>
-<p class="pc-subtitle">Design, First Measurements, and a Simulation at a Million Devices</p>
+<h1 class="pc-h1">PlanetCompute: A Verifiable AI Grid<br>from Idle Browsers and Desktops</h1>
+<p class="pc-subtitle">Design, Early Measurements, and a Million-Device Simulation</p>
 <p class="pc-author">{meta['author']}</p>
 <p class="pc-affil">{meta['affil']}</p>
 <p class="pc-email">{meta['email']}</p>

@@ -93,8 +93,8 @@ function Pandoc(doc)
   if not is_docx then return doc end
   local m = meta_vals
   local head = {
-    para("Title", {pandoc.Str("PlanetCompute: Toward a Verifiable AI Grid"), pandoc.LineBreak(), pandoc.Str("of Idle Browsers and Desktops")}),
-    para("Subtitle", {pandoc.Str("Design, First Measurements, and a Simulation at a Million Devices")}),
+    para("Title", {pandoc.Str("PlanetCompute: A Verifiable AI Grid"), pandoc.LineBreak(), pandoc.Str("from Idle Browsers and Desktops")}),
+    para("Subtitle", {pandoc.Str("Design, Early Measurements, and a Million-Device Simulation")}),
     para("Author", {pandoc.Str(m.pc_author or "")}),
     para("PC Center", {pandoc.Str(m.pc_affil or "")}),
     para("PC Mono Center", {pandoc.Code(m.pc_email or "")}),
