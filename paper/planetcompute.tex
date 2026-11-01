@@ -93,8 +93,8 @@ model and size packs by a square-root law; derive the exact
 collusion probability of quorum validation, under which a naive ``first three matching answers'' rule accepts
 $5.8\%$ wrong packs at 20\% colluders ($6.1\%$ in simulation); show that spare replicas, network-distinct quorums and retroactive
 invalidation remove them; and simulate the orchestrator at a million devices, where, with 2\% ordinary cheaters, in the final designs no
-wrong answer reached a consumer uncorrected, and a low-cost design cut the list-price running cost from
-\$111.54 to \$9.80 an hour at the price of latency. No volunteer outside the operator's servers has yet taken part.
+wrong answer reached a consumer uncorrected, and a low-cost design cut the running cost about
+elevenfold at the price of latency. No volunteer outside the operator's servers has yet taken part.
 \end{abstract}
 
 \noindent\textbf{Keywords:} volunteer computing, compute grid, WorkPacks, AI inference, competitive dispatch,
@@ -815,15 +815,14 @@ cheaters were tested only at $10^5$ devices (above), where 84 wrong answers rema
 seed.
 
 \paragraph{The cost.} The cost runs of Table~\ref{tab:millioncost} were separate (same seed), so their job counts
-differ slightly. Priced at list rates around the clock, this original design costs
-about \$111.54 an hour with volunteers' status reports sent on the open WebSocket every five minutes (\$195.70
-with reports to the website each minute, as first built), because about 8{,}700 objects stay awake,
-objects exchange about four messages per WorkPack, and the ledger takes a write per credited device per minute
-(Table~\ref{tab:millioncost}). A \textbf{low-cost design} changes five things, each a simulator switch: the ledger rolled up hourly, job groups instead of one object per job, shards of $10^4$ devices,
+differ slightly. At list prices, the original design's running cost comes mostly from about
+8{,}700 objects that stay awake, about four messages between objects per WorkPack, and a ledger write per credited
+device per minute (Table~\ref{tab:millioncost}); volunteers' status reports sent to the website each minute, as first
+built, cost 1.75 times as much as reports on the open WebSocket every five minutes. A \textbf{low-cost design} changes five things, each a simulator switch: the ledger rolled up hourly, job groups instead of one object per job, shards of $10^4$ devices,
 batching of messages between objects within 250~ms, and multi-pack leases for trusted devices. Its first million-device
 run delivered 4 wrong results uncorrected, because cheaters holding leases filled packs up to the copy limit,
 then accepted without enough matching answers; never accepting a pack without them, and leasing to trusted
-devices only, fixed it. The fixed design costs about \$9.80 an hour, $11.4$ times less
+devices only, fixed it. The fixed design costs $11.4$ times less
 than the original with the same status reports; the price is latency (small jobs finish in a median of 226~s instead of 74~s) and idle capacity: in the CPU lane
 devices sat idle while packs waited 33\% of the time (the original design: under 0.3\%), because leases and
 batching hold work in a few places, as push did. It suits batch work; the idle lane is the next fault to fix.
@@ -839,7 +838,7 @@ text.}\label{tab:millioncost}
  & \textbf{Original} & \textbf{Low-cost,} & \textbf{Low-cost,} \\
  & \textbf{design} & \textbf{first run} & \textbf{with the fix} \\
 \midrule
-Cost/hour, reports on the WebSocket every 5 min & \$111.54 & \$9.82 & \$9.80 \\
+Running cost relative to the original (reports every 5 min) & 1 & 1/11.4 & 1/11.4 \\
 Objects awake on average & 8{,}743 & 213 & 214 \\
 Requests between objects per second (billed) & 49{,}458 & 11{,}135 & 11{,}483 \\
 Device messages per second & 20{,}432 & 5{,}984 & 6{,}962 \\
