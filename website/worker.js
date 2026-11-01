@@ -393,8 +393,39 @@ const codeHash = (env, purpose, email, code) => sha256hex(`${authSecret(env)}|co
 
 // Security review L3: wrong codes per address over a day; at OTP_FAIL_LOCK no new codes for that address until it passes
 const OTP_FAIL_LOCK = 15;   // per address per UTC day
+// A daily ceiling per address (user 2026-11-01): more than OTP_DAY_MAX code requests for one address within 24 hours
+// (every purpose; refused ones count too) put the address on hold for OTP_HOLD_S: no code is made, and ONE email tells
+// the address when the hold started. Requests during the hold are refused without another email.
+const OTP_DAY_MAX = 25, OTP_HOLD_S = 20 * 3600;
+const gmtStamp = (t) => new Date(t * 1000).toISOString().replace(/\.\d+Z$/, "").replace(/-/g, "").replace("T", ":").replace(/:(\d\d):(\d\d)$/, "$1$2");
+async function otpDayCheck(env, email, t) {
+  const pk = `OTPREQ#${email}`, rq = await getItem(env, pk, "OTPREQ");
+  const holdMsg = (until) => `This account is on hold until ${gmtStamp(until)} Greenwich time (too many code requests in 24 hours). Please try later.`;
+  if (rq && Number(rq.hold_until || 0) > t) return { ok: false, status: 429, error: holdMsg(Number(rq.hold_until)) };
+  const times = String((rq && rq.times) || "").split(",").map(Number).filter((x) => x > 0 && t - x < 86400);
+  times.push(t);
+  if (times.length > OTP_DAY_MAX) {
+    const until = t + OTP_HOLD_S;
+    await ddb(env, "PutItem", { TableName: tableName(env), Item: M({ pk, sk: "OTPREQ", times: "", hold_started: t, hold_until: until, ttl: until + 86400 }) });
+    const hours = Math.round(OTP_HOLD_S / 3600);
+    const text = `Your account is on hold for ${hours} hours starting ${gmtStamp(t)} Greenwich time; please try later.\n\n` +
+      `PlanetCompute received more than ${OTP_DAY_MAX} requests for a sign-in or confirmation code for this address within 24 hours, so no new code will be ` +
+      `sent until ${gmtStamp(until)} Greenwich time. If you did not ask for these codes, nobody can sign in without them: you need to do nothing.\n\nPlanetCompute · https://planetcompute.ai`;
+    await sendEmail(env, { to: [email], subject: `Your PlanetCompute account is on hold for ${hours} hours`, text,
+      html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#14182b"><h2 style="margin:0 0 12px">Your account is on hold</h2>` +
+        `<p><b>Your account is on hold for ${hours} hours starting ${gmtStamp(t)} Greenwich time; please try later.</b></p>` +
+        `<p>PlanetCompute received more than ${OTP_DAY_MAX} requests for a sign-in or confirmation code for this address within 24 hours, so no new code will be sent until ${gmtStamp(until)} Greenwich time. ` +
+        `If you did not ask for these codes, nobody can sign in without them: you need to do nothing.</p><p style="color:#667;font-size:13px">PlanetCompute · https://planetcompute.ai</p></div>` })
+      .catch((e) => console.log("hold email", e && e.message));
+    return { ok: false, status: 429, error: holdMsg(until) };
+  }
+  await ddb(env, "PutItem", { TableName: tableName(env), Item: M({ pk, sk: "OTPREQ", times: times.slice(-OTP_DAY_MAX - 1).join(","), ttl: t + 2 * 86400 }) });
+  return null;
+}
 async function issueCode(env, purpose, email, request) {
   const pk = `OTP#${purpose}#${email}`, t = now();
+  const held = await otpDayCheck(env, email, t);
+  if (held) return held;
   const fails = await getItem(env, `OTPFAIL#${email}#${Math.floor(t / 86400)}`, "OTPFAIL");   // today's (UTC) wrong codes
   if (fails && Number(fails.n || 0) >= OTP_FAIL_LOCK)
     return { ok: false, status: 429, error: "Too many wrong codes for this address today. Please try again tomorrow." };
