@@ -20,6 +20,7 @@ use axum::{
     Json, Router,
 };
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering as AtOrd};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -278,6 +279,10 @@ async fn guard(State(st): State<Arc<Local>>, req: Request, next: Next) -> Respon
     if !has_secret(req.headers()) {
         return refused(&path);
     }
+    // obsolete (the versions table): only the page, its status, opening the download page and quitting still answer
+    if OBSOLETE.load(AtOrd::SeqCst) && !matches!(path.as_str(), "/local/" | "/local" | "/local/info" | "/local/open" | "/local/quit" | "/local/close") {
+        return (StatusCode::GONE, Json(serde_json::json!({"error": format!("This planetCompute (version {}) is obsolete: download the new version at https://planetcompute.ai/download", crate::version_id()), "obsolete": true}))).into_response();
+    }
     let mut resp = next.run(req).await;
     let h = resp.headers_mut();
     if !h.contains_key(header::X_FRAME_OPTIONS) {
@@ -347,14 +352,59 @@ async fn info(State(st): State<Arc<Local>>) -> Json<serde_json::Value> {
     }))
 }
 
-/// Is there a newer build? (plan_old_programs #3) 30 s after the start, then once a day: planetcompute.ai/download/latest.json,
-/// this build's entry (DOWNLOAD_KEY) against BUILD_TIME. Nothing waits on it: no internet, an error or an older list
-/// (no build_time yet) = no notice. `too_old_to_earn` when this build is below the site's minimum for earning.
+/// Set when the website's versions table lists THIS version as inactive (user 2026-11-01): the program is obsolete and does
+/// not run: the window shows only the "obsolete, download the new one" message, the local controls refuse, contributing
+/// stops, and the no-window build prints the message and ends.
+pub static OBSOLETE: AtomicBool = AtomicBool::new(false);
+
+/// The website's verdict for this OS and version: {latest, newer, obsolete, url} (GET /api/program/version).
+pub(crate) async fn version_check(http: &reqwest::Client) -> Option<serde_json::Value> {
+    let u = format!("{}/api/program/version?os={}&v={}", api::SITE, crate::VERSION_OS, crate::version_id());
+    let r = http.get(u).timeout(Duration::from_secs(20)).send().await.ok()?;
+    if !r.status().is_success() {
+        return None;
+    }
+    serde_json::from_slice(&r.bytes().await.ok()?).ok()
+}
+
+/// Is there a newer build, and is this one still allowed? At the start and then every hour (user 2026-11-01: a release was
+/// not noticed, the check ran 30 s after the start and then once a day): the versions table (newer / obsolete) and
+/// planetcompute.ai/download/latest.json (this build's entry against BUILD_TIME; `too_old_to_earn`). Nothing waits on it:
+/// no internet or an error = no notice, and never obsolete.
 async fn update_loop(st: Arc<Local>) {
-    tokio::time::sleep(Duration::from_secs(30)).await;
     let mut said = 0u64;
+    let mut said_ver = String::new();
     loop {
-        if let Some(u) = update_check(&st.http).await {
+        let ver = version_check(&st.http).await;
+        if let Some(v) = &ver {
+            if v["obsolete"].as_bool() == Some(true) {
+                OBSOLETE.store(true, AtOrd::SeqCst);
+                let msg = format!("This planetCompute (version {}) is obsolete: download the new version at {}", crate::version_id(),
+                    v["url"].as_str().unwrap_or("https://planetcompute.ai/download"));
+                if let Some(e) = &st.engine {
+                    let _ = e.update(&serde_json::json!({"run": false}));
+                }
+                if !cfg!(feature = "window") {
+                    eprintln!("{msg}");
+                    crate::image::stop_engines();
+                    std::process::exit(3);
+                }
+            } else if v["newer"].as_bool() == Some(true) {
+                let latest = v["latest"].as_str().unwrap_or("").to_string();
+                if latest != said_ver && st.engine.is_some() {
+                    println!("There is a new version {latest} available, please download it at {}", v["url"].as_str().unwrap_or("https://planetcompute.ai/download"));
+                    said_ver = latest;
+                }
+            }
+        }
+        if let Some(mut u) = update_check(&st.http).await.or_else(|| Some(serde_json::json!({}))) {
+            if let Some(v) = &ver {
+                u["version"] = serde_json::json!(crate::version_id());
+                u["latest_version"] = v["latest"].clone();
+                u["newer"] = v["newer"].clone();
+                u["obsolete"] = v["obsolete"].clone();
+                u["url"] = v["url"].clone();
+            }
             let t = u["build_time"].as_u64().unwrap_or(0);
             if u["available"].as_bool() == Some(true) && t != said && st.engine.is_some() {
                 said = t; // headless: one line per new build
@@ -362,7 +412,7 @@ async fn update_loop(st: Arc<Local>) {
             }
             *st.update.lock().unwrap() = u;
         }
-        tokio::time::sleep(Duration::from_secs(24 * 3600)).await;
+        tokio::time::sleep(Duration::from_secs(3600)).await;
     }
 }
 

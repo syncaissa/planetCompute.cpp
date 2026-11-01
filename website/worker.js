@@ -3381,10 +3381,76 @@ async function adminBroadcasts(env, adminEmail, path, body) {
   }
   return null;
 }
+// Program versions (user 2026-11-01): table <prefix>versions, one partition (pk "V"), sort key "<created_at>#<os>#<version>",
+// fields os (Windows, Mac, Linux, LinuxWithGPU, LinuxNoUI), version (the build's commit, e.g. 01de581), created_at,
+// active ("yes" / "no"), notes, by. For each OS the newest ACTIVE row is the latest version; a program whose own version
+// is listed as inactive is obsolete and does not start. Admins add and switch them (admin tab Versions); the program
+// asks GET /api/program/version?os=<os>&v=<version> at start and every hour.
+const VERSION_OSES = ["Windows", "Mac", "Linux", "LinuxWithGPU", "LinuxNoUI"];
+const VERSION_DL = { Windows: "windows", Mac: "mac", Linux: "linux", LinuxWithGPU: "linux-vulkan", LinuxNoUI: "linux-server" };   // download keys
+const versionsTable = (env) => PFX(env) + "versions";
+let verCache = { at: 0, rows: null };
+async function listVersions(env) {
+  const out = [];
+  let start;
+  do {
+    const r = await ddb(env, "Query", { TableName: versionsTable(env), KeyConditionExpression: "pk = :p", ExpressionAttributeValues: { ":p": S_("V") },
+      ScanIndexForward: false, ...(start ? { ExclusiveStartKey: start } : {}) });
+    for (const it of r.Items || []) { const v = U(it); out.push({ sk: v.sk, os: v.os, version: v.version, created_at: v.created_at || "", active: v.active === "yes" ? "yes" : "no",
+      notes: v.notes || "", by: v.by || "", updated_at: v.updated_at || "" }); }
+    start = r.LastEvaluatedKey;
+  } while (start);
+  return out;
+}
+async function versionsCached(env) {
+  if (verCache.rows && Date.now() - verCache.at < 60000) return verCache.rows;
+  verCache = { at: Date.now(), rows: await listVersions(env) };
+  return verCache.rows;
+}
+// What a program of this OS and version should be told (pure: tested on its own)
+function versionVerdict(rows, os, v) {
+  const mine = rows.filter((r) => r.os === os), latest = mine.filter((r) => r.active === "yes").sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0] || null;
+  const me = mine.find((r) => r.version === v) || null;
+  const obsolete = !!(me && me.active === "no");
+  // a version that is not in the list cannot be compared (it may be newer than the list): no message for it
+  const newer = !!(latest && me && latest.version !== v && latest.created_at > me.created_at);
+  return { os, version: v, latest: latest ? latest.version : "", latest_at: latest ? latest.created_at : "", newer, obsolete, url: "https://planetcompute.ai/download" };
+}
+async function adminVersions(env, adminEmail, path, body) {
+  if (path === "/api/admin/versions") return json({ ok: true, table: versionsTable(env), oses: VERSION_OSES, rows: await listVersions(env) });
+  if (path === "/api/admin/versions/add") {
+    const os = String(body.os || ""), version = String(body.version || "").trim(), notes = String(body.notes || "").trim().slice(0, 300);
+    if (!VERSION_OSES.includes(os)) return json({ error: "Choose the OS: " + VERSION_OSES.join(", ") + "." }, 400);
+    if (!/^[0-9A-Za-z._+-]{1,40}$/.test(version)) return json({ error: "The version: letters, digits, dot, dash or plus (for example 01de581)." }, 400);
+    if ((await listVersions(env)).some((r) => r.os === os && r.version === version)) return json({ error: `${os} ${version} is already in the list.` }, 409);
+    const t = iso();
+    await ddb(env, "PutItem", { TableName: versionsTable(env), Item: M({ pk: "V", sk: `${t}#${os}#${version}`, os, version, created_at: t, updated_at: t,
+      active: body.active === "no" ? "no" : "yes", notes, by: adminEmail }) });
+    verCache = { at: 0, rows: null };
+    return json({ ok: true, rows: await listVersions(env) });
+  }
+  if (path === "/api/admin/versions/set") {
+    const sk = String(body.sk || "");
+    if (!/^\d{4}-\d\d-\d\dT[\d:.]+Z#[A-Za-z]+#[0-9A-Za-z._+-]{1,40}$/.test(sk)) return json({ error: "Bad version row." }, 400);
+    await ddb(env, "UpdateItem", { TableName: versionsTable(env), Key: M({ pk: "V", sk }), ConditionExpression: "attribute_exists(pk)",
+      UpdateExpression: "SET active = :a, updated_at = :t, updated_by = :b", ExpressionAttributeValues: M({ ":a": body.active === "yes" ? "yes" : "no", ":t": iso(), ":b": adminEmail }) });
+    verCache = { at: 0, rows: null };
+    return json({ ok: true, rows: await listVersions(env) });
+  }
+  if (path === "/api/admin/versions/published") {           // the builds on the download page now, to add them in one go
+    const b = await b2ModelsAuth(env).catch(() => null);
+    const latest = b ? await fetch(`${b.base}/client/LATEST.json`, { headers: { authorization: b.token } }).then((r) => r.ok ? r.json() : null).catch(() => null) : null;
+    const out = VERSION_OSES.map((os) => { const k = DOWNLOADS[VERSION_DL[os]] && DOWNLOADS[VERSION_DL[os]].key, x = latest && latest.builds && latest.builds[k];
+      return { os, version: x && x.commit ? String(x.commit).slice(0, 7) : "", built: x && x.build_time ? new Date(Number(x.build_time) * 1000).toISOString() : "" }; });
+    return json({ ok: true, published: out });
+  }
+  return null;
+}
 async function handleAdmin(env, me, path, method, body, url) {
   const myProf = await getItem(env, `USER#${me.user_id}`, "PROFILE");
   const myEmails = (await profile(env, me.user_id)).emails.map((e) => e.email);
   if (!isAdmin(env, myProf, myEmails)) return json({ error: "Admins only." }, 403);
+  if (path.startsWith("/api/admin/versions")) { const r = await adminVersions(env, myProf.primary_email || myEmails[0] || "", path, body || {}); if (r) return r; }
   if (path.startsWith("/api/admin/broadcasts")) { const r = await adminBroadcasts(env, myProf.primary_email || myEmails[0] || "", path, body || {}); if (r) return r; }
   if (path === "/api/admin/sherpa" && method === "GET") return sherpaAdmin(env);
   if (path.startsWith("/api/admin/sherpa/")) return sherpaAdminRoute(env, myProf.primary_email || myEmails[0] || "", path, method, body, url);
@@ -3870,6 +3936,14 @@ async function handleApi(request, env, url) {
     if (path === "/api/app-build" && request.method === "GET")   // the program's build, read from its User-Agent (plan_old_programs)
       return new Response(JSON.stringify({ app: !!appBuildOfUa(request.headers.get("user-agent")), build: "", build_time: 0,
         ...(appBuildOfUa(request.headers.get("user-agent")) || {}) }), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+    // the program asks at start and every hour: is there a newer version for my OS, and is mine still active? (no sign-in)
+    if (path === "/api/program/version" && request.method === "GET") {
+      const os = url.searchParams.get("os") || "", v = (url.searchParams.get("v") || "").slice(0, 40);
+      if (!VERSION_OSES.includes(os)) return json({ error: "os is one of " + VERSION_OSES.join(", ") }, 400);
+      const rows = await versionsCached(env).catch(() => null);
+      if (!rows) return json({ os, version: v, latest: "", newer: false, obsolete: false, url: "https://planetcompute.ai/download", unknown: true });
+      return json(versionVerdict(rows, os, v), 200, { "cache-control": "no-store" });
+    }
     if (path === "/api/credit-rate" && request.method === "GET") {
       const rules = await listRules(env), t = iso(), cur = ruleAt(rules, t);
       const next = rules.find((r) => r.status !== "cancelled" && r.effective_from > t);
@@ -7830,6 +7904,7 @@ tr:hover td { background: rgba(var(--fg-rgb),.03); }
       <button class="tab" data-tab="workhorses">Workhorses</button>
       <button class="tab" data-tab="sherpahubs">SherpaHubs</button>
       <button class="tab" data-tab="broadcast">Notifications</button>
+      <button class="tab" data-tab="versions">Versions</button>
       <button class="tab" id="reload" style="margin-left:auto">Refresh</button>
     </div>
 
@@ -8151,6 +8226,30 @@ tr:hover td { background: rgba(var(--fg-rgb),.03); }
       <div class="tbl-wrap"><table id="t-sherpajobs"></table></div>
       <div class="panel" id="sh-detail" style="display:none"></div>
       <p class="note">Jobs and their logs are kept by each SherpaHub's room on the site (the last 100 per hub); picture results are kept privately in B2 (sherpa_jobs/). Install or update a SherpaHub server from the admin machine: <code>python3 scripts/startWorkhorseOnAnyServer.py --server-id &lt;id&gt; --boot</code>.</p>
+    </section>
+    <section class="view" id="v-versions">
+      <div class="panel">
+        <h3>Add a version</h3>
+        <p class="muted" style="margin-top:0">For each OS the newest <b>active</b> version is the latest: a program with an older version shows "There is a new version … available, please download it at https://planetcompute.ai/download". A program whose version is <b>inactive</b> does not start and tells the user it is obsolete. Add the new version before making an old one inactive.</p>
+        <div class="row2" style="flex-wrap:wrap;gap:8px">
+          <select class="field" id="vOs"><option>Windows</option><option>Mac</option><option>Linux</option><option>LinuxWithGPU</option><option>LinuxNoUI</option></select>
+          <input class="field" id="vVer" maxlength="40" placeholder="Version (build ID, e.g. 01de581)">
+          <select class="field" id="vAct"><option value="yes">Active: yes</option><option value="no">Active: no</option></select>
+          <input class="field" id="vNotes" maxlength="300" placeholder="Notes (optional)" style="flex:1;min-width:180px">
+          <button class="btn btn-gold" id="vAdd">Add</button>
+        </div>
+        <div class="msg" id="vOut"></div>
+        <h4 style="margin:14px 0 6px">Builds on the download page now</h4>
+        <div id="vPub" class="muted">Open this tab to see them.</div>
+      </div>
+      <div class="bar">
+        <select class="field" id="vfOs"><option value="">All OS</option><option>Windows</option><option>Mac</option><option>Linux</option><option>LinuxWithGPU</option><option>LinuxNoUI</option></select>
+        <button class="chip on" data-vf="all">All</button><button class="chip" data-vf="yes">Active</button><button class="chip" data-vf="no">Inactive</button>
+        <input type="search" id="q-ver" placeholder="Search the version or notes">
+        <span class="count" id="c-ver"></span>
+      </div>
+      <div class="tbl-wrap"><table id="t-ver"></table></div>
+      <p class="note" id="vNote">Table planetcompute-ai-versions, newest first. Programs check at start and every hour.</p>
     </section>
     <section class="view" id="v-broadcast">
       <div class="panel">
@@ -8761,6 +8860,83 @@ tr:hover td { background: rgba(var(--fg-rgb),.03); }
   });
   $("q-bc").oninput = table;
   document.querySelectorAll('.tab[data-tab="broadcast"]').forEach(function (b) { b.addEventListener("click", function () { if (!st.loaded) load(); }); });
+  $("reload").addEventListener("click", function () { if (st.loaded) load(); });
+})();
+// ---- Versions (table versions): add, switch active/inactive, filter by OS and status, search; the published builds ----
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function api(path, body) {
+    return fetch(path, { method: body ? "POST" : "GET", credentials: "same-origin", headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, data: j }; }); });
+  }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  var st = { rows: [], f: "all", loaded: false };
+  function say(t, kind) { var m = $("vOut"); m.className = "msg" + (kind ? " " + kind : ""); m.textContent = t || ""; }
+  function load() {
+    api("/api/admin/versions").then(function (x) {
+      if (!x.ok) { say(x.data.error || "Could not load the versions.", "err"); return; }
+      st.rows = x.data.rows || []; st.loaded = true; if (x.data.table) $("vNote").textContent = "Table " + x.data.table + ", newest first. Programs check at start and every hour.";
+      table(); published();
+    });
+  }
+  function add(os, version, active, notes) {
+    say("Adding…");
+    return api("/api/admin/versions/add", { os: os, version: version, active: active, notes: notes }).then(function (x) {
+      if (!x.ok) { say(x.data.error || "Could not add it.", "err"); return false; }
+      st.rows = x.data.rows || []; say("Added " + os + " " + version + (active === "no" ? " (inactive)." : " (active)."), "good"); table(); published(); return true;
+    });
+  }
+  function published() {
+    api("/api/admin/versions/published").then(function (x) {
+      var box = $("vPub"); box.innerHTML = "";
+      if (!x.ok) { box.textContent = x.data.error || "Could not read the download page."; return; }
+      var t = el("table"), hr = el("tr"); ["OS", "Build on the download page", "Made", ""].forEach(function (h) { hr.appendChild(el("th", "", h)); }); t.appendChild(hr);
+      (x.data.published || []).forEach(function (p) {
+        var tr = el("tr"); tr.appendChild(el("td", "", p.os)); tr.appendChild(el("td", "", p.version || "–")); tr.appendChild(el("td", "", p.built ? new Date(p.built).toLocaleString() : ""));
+        var c = el("td"), known = st.rows.some(function (r) { return r.os === p.os && r.version === p.version; });
+        if (p.version && !known) { var b = el("button", "chip", "Add as active"); b.onclick = function () { b.disabled = true; add(p.os, p.version, "yes", "published build"); }; c.appendChild(b); }
+        else if (known) c.appendChild(el("span", "muted", "in the list"));
+        tr.appendChild(c); t.appendChild(tr);
+      });
+      box.appendChild(t);
+    });
+  }
+  function table() {
+    var q = ($("q-ver").value || "").trim().toLowerCase(), os = $("vfOs").value;
+    var rows = st.rows.filter(function (r) { return (!os || r.os === os) && (st.f === "all" || r.active === st.f) && (!q || (r.version + " " + r.notes).toLowerCase().indexOf(q) >= 0); });
+    var latest = {}; st.rows.forEach(function (r) { if (r.active === "yes" && (!latest[r.os] || r.created_at > latest[r.os].created_at)) latest[r.os] = r; });
+    var t = $("t-ver"); t.innerHTML = "";
+    var hr = el("tr"); ["Added", "OS", "Version", "Active", "", "Notes", "By", ""].forEach(function (h) { hr.appendChild(el("th", "", h)); }); t.appendChild(hr);
+    rows.forEach(function (r) {
+      var tr = el("tr");
+      tr.appendChild(el("td", "", r.created_at ? new Date(r.created_at).toLocaleString() : ""));
+      tr.appendChild(el("td", "", r.os)); tr.appendChild(el("td", "", r.version)); tr.appendChild(el("td", "", r.active));
+      tr.appendChild(el("td", "", latest[r.os] && latest[r.os].sk === r.sk ? "latest" : r.active === "no" ? "obsolete" : ""));
+      tr.appendChild(el("td", "", r.notes)); tr.appendChild(el("td", "", r.by));
+      var b = el("button", "chip", r.active === "yes" ? "Make inactive" : "Make active"), c = el("td"); c.appendChild(b); tr.appendChild(c);
+      b.onclick = async function () {
+        if (r.active === "yes" && window.pcConfirm && !(await pcConfirm("Make " + r.os + " " + r.version + " inactive? Programs with this version will stop starting and tell the user to download a new one."))) return;
+        b.disabled = true;
+        api("/api/admin/versions/set", { sk: r.sk, active: r.active === "yes" ? "no" : "yes" }).then(function (x) {
+          b.disabled = false;
+          if (!x.ok) { say(x.data.error || "Could not change it.", "err"); return; }
+          st.rows = x.data.rows || st.rows; say(r.os + " " + r.version + (r.active === "yes" ? " is now inactive." : " is now active."), "good"); table();
+        });
+      };
+      t.appendChild(tr);
+    });
+    $("c-ver").textContent = rows.length + " of " + st.rows.length + " version" + (st.rows.length === 1 ? "" : "s");
+  }
+  $("vAdd").onclick = function () {
+    var v = $("vVer").value.trim(); if (!v) { say("Write the version.", "err"); return; }
+    $("vAdd").disabled = true;
+    add($("vOs").value, v, $("vAct").value, $("vNotes").value).then(function (ok) { $("vAdd").disabled = false; if (ok) { $("vVer").value = ""; $("vNotes").value = ""; } });
+  };
+  document.querySelectorAll(".chip[data-vf]").forEach(function (b) {
+    b.onclick = function () { st.f = b.getAttribute("data-vf"); document.querySelectorAll(".chip[data-vf]").forEach(function (x) { x.classList.toggle("on", x === b); }); table(); };
+  });
+  $("vfOs").onchange = table; $("q-ver").oninput = table;
+  document.querySelectorAll('.tab[data-tab="versions"]').forEach(function (b) { b.addEventListener("click", function () { if (!st.loaded) load(); }); });
   $("reload").addEventListener("click", function () { if (st.loaded) load(); });
 })();
 </script>

@@ -422,6 +422,13 @@ def table_definitions(prefix):
             "Tags": tags("user-broadcast"),
         },
         {
+            # program versions per OS (Windows, Mac, Linux, LinuxWithGPU, LinuxNoUI): newest active = latest; inactive = obsolete
+            "TableName": f"{prefix}versions", **common,
+            "AttributeDefinitions": [S("pk"), S("sk")],
+            "KeySchema": keys("pk", "sk"),
+            "Tags": tags("versions"),
+        },
+        {
             "TableName": f"{prefix}models", **common,
             "AttributeDefinitions": [S(a) for a in ("model_id", "sk", "category", "cat_sk")],
             "KeySchema": keys("model_id", "sk"),

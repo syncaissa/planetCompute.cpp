@@ -2213,10 +2213,35 @@ minimal page). Result (2026-11-01): 19/19. Live (site 3635b3bf): the table plane
 (point-in-time recovery, deletion protection); /api/me/broadcasts and /api/admin/broadcasts answer 401 when not signed
 in; the admin page has the tab. The program shows the pop-up from the next release.
 
+## 105. Program versions: "a new version is available" and obsolete versions (2026-11-01)
+
+Table `<prefix>versions` (`database/CreateTables.py`; pk "V", sort key "<created_at>#<os>#<version>"; fields os
+(Windows, Mac, Linux, LinuxWithGPU, LinuxNoUI = the downloads windows-x86_64 .exe, macos-aarch64, linux-x86_64,
+linux-x86_64-vulkan, linux-x86_64-server), version (the build's commit, 7 characters), created_at, active yes/no,
+notes, by). Admin page, tab Versions: add a version, "Builds on the download page now" with one-click add, OS and
+active filters, search, Make active / Make inactive (with a warning). `GET /api/program/version?os=&v=` (no sign-in):
+for the OS the newest active row is the latest; a listed version older than it gets "newer"; a listed inactive version
+is "obsolete"; a version that is not in the list gets no message (it may be newer than the list).
+The program (`client/src/server.rs`) asks at the start and then every hour (before: 30 s after the start, then once a
+day, which is why a release could go unnoticed). Newer: the window's bar says "There is a new version <v> available,
+please download it at https://planetcompute.ai/download" (no-window builds print it). Obsolete: contributing stops,
+the local controls answer 410, the window shows only the obsolete message with a Download button, and the no-window
+build prints the message and ends with code 3; the servers' agent then fetches the newest published build (at most
+every 10 minutes) and waits a minute before restarting that copy.
+Steps: (1) `node scripts/test_versions.mjs website/worker.js client/ui/index.html` with AWS keys (the rule, the admin
+routes and the program's route against pctest-ai-versions; the pages). (2) RunPod CPU pod: build the no-window program
+with PC_COMMIT=tstobs1... and PC_COMMIT=tstold1..., add two temporary LinuxNoUI rows to the live table (tstobs1
+inactive; tstold1 active, dated before the latest), run each 40 s, then remove the rows.
+Result (2026-11-01): test_versions 19/19; the tstobs1 program printed "This planetCompute (version tstobs1) is
+obsolete: download the new version at https://planetcompute.ai/download" and ended with code 3; the tstold1 program
+printed "There is a new version 01de581 available, please download it at https://planetcompute.ai/download" and kept
+running; Rust 28/28. The live table holds one active row per OS (01de581, the published builds).
+
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-01 17:20 | 105 program versions: newer notice, obsolete stop, admin tab Versions | site 2d1cb685; program (this commit) | 19/19; pod: obsolete exit 3, older told about 01de581; Rust 28/28 |
 | 2026-11-01 16:40 | 104 notifications (table user-broadcast, admin tab, pop-up on site and program) | site 3635b3bf | 19/19; routes 401 when signed out |
 | 2026-11-01 16:10 | 103 sign-in resets the counters; signed operator clear | site cdf96d02 | 8/8; live clear ok |
 | 2026-11-01 15:55 | 102 10 code requests a day per address, then a 24-hour hold with one email | site (this commit) | 10/10 |

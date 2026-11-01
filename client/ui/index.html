@@ -1495,9 +1495,25 @@ on the home page. Source code, scripts, tests and the paper: <a href="https://gi
   }
   // the update notice (plan_old_programs #3): from the program's daily look at planetcompute.ai/download/latest.json
   let updUrl = '';
+  // obsolete (the website's versions table lists this version as inactive): the whole window says so; nothing else runs
+  function obsoleteScreen(u) {
+    if (document.getElementById('pcObsolete')) return;
+    const url = u.url || 'https://planetcompute.ai/download';
+    const cf = document.getElementById('consoleFrame'); if (cf) { try { cf.src = 'about:blank'; } catch (e) {} cf.hidden = true; }
+    document.querySelectorAll('iframe').forEach((f) => { try { f.src = 'about:blank'; } catch (e) {} });
+    const w = document.createElement('div'); w.id = 'pcObsolete'; w.setAttribute('role', 'alertdialog'); w.setAttribute('aria-label', 'This version is obsolete');
+    w.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#0b1424;color:#e8eefb;display:flex;align-items:center;justify-content:center;padding:24px;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif';
+    const b = document.createElement('div'); b.style.cssText = 'max-width:560px;text-align:center';
+    const h = document.createElement('h2'); h.textContent = 'This version of PlanetCompute is obsolete'; h.style.margin = '0 0 12px';
+    const p = document.createElement('p'); p.textContent = 'This version (' + (u.version || '') + ') can no longer be used. Please download the new version at ' + url;
+    const g = document.createElement('button'); g.className = 'btn'; g.type = 'button'; g.textContent = 'Download the new version'; g.style.marginTop = '12px';
+    g.onclick = () => call(BASE + 'local/open', { url }).catch(() => window.open(url, '_blank'));
+    b.appendChild(h); b.appendChild(p); b.appendChild(g); w.appendChild(b); document.body.appendChild(w);
+  }
   function updateBar(u) {
+    if (u && u.obsolete) { obsoleteScreen(u); return; }
     const later = Number(localStorage.getItem('pc-upd-later') || 0) > Date.now();
-    const show = !TUNNEL && !EXPRESS && u && (u.available || u.too_old_to_earn) && !later;
+    const show = !TUNNEL && !EXPRESS && u && (u.available || u.newer || u.too_old_to_earn) && !later;
     $('updBar').hidden = !show;
     if (!show) { $('updBar').style.display = 'none'; return; }
     $('updBar').style.display = 'flex'; updUrl = u.url || 'https://planetcompute.ai/download';
@@ -1505,6 +1521,7 @@ on the home page. Source code, scripts, tests and the paper: <a href="https://gi
     $('updText').textContent = u.too_old_to_earn
       ? (u.earn_mode === 'enforce' ? 'This PlanetCompute is too old to earn. Update to keep earning: making pictures and chat here still work.'
         : 'This PlanetCompute is old and will soon stop earning. Update to keep earning.')
+      : u.newer && u.latest_version ? `There is a new version ${u.latest_version} available, please download it at ${u.url || 'https://planetcompute.ai/download'}`
       : `A new PlanetCompute is ready${u.built ? ' (made ' + u.built + ')' : ''}.`;
   }
   $('updGet').onclick = () => call(BASE + 'local/open', { url: updUrl }).catch(() => window.open(updUrl, '_blank'));

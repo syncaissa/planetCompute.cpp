@@ -143,6 +143,7 @@ class Copy:
     def __init__(self, i):
         self.i, self.port, self.home = i, int(CFG.get("WH_PORT0") or PORT0) + i, os.path.join(D, "data", f"i{i}")
         self.proc, self.since, self.restarts, self.last_exit, self.crashed = None, "", 0, "", False
+        self.obsolete, self.wait_until = False, 0.0       # exit code 3: this build is obsolete (the website's versions table)
         self.model_list = None
 
     def cfg(self, name):
@@ -227,6 +228,9 @@ class Copy:
         if self.proc and self.proc.poll() is not None:
             self.last_exit = f"code {self.proc.returncode} at {iso()}"
             log(f"copy {self.i} ended by itself: {self.last_exit}")
+            if self.proc.returncode == 3:                 # obsolete: the agent fetches the newest build; no fast restarts meanwhile
+                self.obsolete, self.wait_until = True, time.time() + 60
+                log(f"copy {self.i}: this build is obsolete (versions table): fetching the newest published build")
             self.proc, self.since, self.crashed = None, "", True
 
     def state(self, desired):
@@ -543,14 +547,20 @@ class Agent:
         if self.desired == "running":
             self.start_all("agent started")
         every, next_report = 15, time.time() + 15
+        last_obsolete_update = 0.0
         while True:
             for c in self.copies:
                 c.reap()
+            if any(c.obsolete for c in self.copies) and time.time() - last_obsolete_update > 600:
+                last_obsolete_update = time.time()
+                for c in self.copies:
+                    c.obsolete = False
+                self._update()                            # the newest published build (signature checks as for Update)
             if self.desired == "stopped":
                 self.stop_all("Stop on the admin page")
             else:
                 for c in self.copies[: self.n]:
-                    if not c.proc and (self.auto or not c.crashed):
+                    if not c.proc and (self.auto or not c.crashed) and time.time() >= c.wait_until:
                         if c.crashed:
                             time.sleep(2)
                             c.restarts += 1

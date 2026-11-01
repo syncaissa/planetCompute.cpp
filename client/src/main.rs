@@ -60,6 +60,11 @@ pub fn utc_text(t: u64) -> String {
 fn build_date() -> String {
     if build_time() == 0 { "no date".into() } else { utc_text(build_time()) }
 }
+/// This build's OS name in the website's versions table (admin tab Versions; user 2026-11-01).
+pub const VERSION_OS: &str = if cfg!(target_os = "windows") { "Windows" } else if cfg!(target_os = "macos") { "Mac" }
+    else if !cfg!(feature = "window") { "LinuxNoUI" } else if cfg!(feature = "vulkan") { "LinuxWithGPU" } else { "Linux" };
+/// This build's version in that table: the first 7 characters of its commit (e.g. 01de581).
+pub fn version_id() -> &'static str { &BUILD[..BUILD.len().min(7)] }
 /// This build's name on planetcompute.ai/download (the keys of /download/latest.json).
 pub const DOWNLOAD_KEY: &str = if cfg!(target_os = "windows") { "windows" } else if cfg!(target_os = "macos") { "mac" }
     else if !cfg!(feature = "window") { "linux-server" } else if cfg!(feature = "vulkan") { "linux-vulkan" } else { "linux" };
