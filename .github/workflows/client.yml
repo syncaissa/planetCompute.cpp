@@ -89,8 +89,7 @@ jobs:
         with: { toolchain: stable }
       # macOS: a cache made on the retired macos-14 image carried llama.cpp's CMake setup (OpenSSL paths) that do not
       # exist on macos-15 (2026-10-31: cpp-httplib "openssl/err.h not found"): its own key, so it builds fresh once
-      # Windows: the cache of 2026-11-01 03:28 held a half-kept llama.cpp Vulkan build folder (CMake: "Not a file:
-      # vulkan-shaders-gen ... cmake_install.cmake"): its own key, so it builds fresh once
+      # Windows: its own key since 2026-11-01 (a suspected stale cache; the real cause was a build race, see Build)
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2 (pinned, security review P11)
         with: { workspaces: client, key: "${{ matrix.key }}${{ matrix.os == 'macos-15' && '-macos15' || '' }}${{ startsWith(matrix.os, 'windows') && '-win2' || '' }}" }
       - name: Linux libraries (WebKitGTK for the window; clang for llama.cpp's bindings)
@@ -167,7 +166,14 @@ jobs:
           # (cpp-httplib, not used by planetCompute) failed to compile; linking Homebrew's OpenSSL would also tie the
           # program to Homebrew. llama-cpp-sys-2 passes CMAKE_* to CMake: no OpenSSL = that server without HTTPS.
           if [ "$RUNNER_OS" = "macOS" ]; then export CMAKE_DISABLE_FIND_PACKAGE_OpenSSL=ON; fi
-          cargo build --release --locked $feat   # drop --locked for the one push that adds a dependency, then commit the new Cargo.lock
+          # Windows: llama.cpp's Vulkan shader generator is an ExternalProject; MSBuild with --parallel 4 can start its install
+          # step before its configure step has finished (2026-11-01, two runs: CMake "Not a file: ...vulkan-shaders-gen-build/
+          # cmake_install.cmake", MSB8064). The configure finishes anyway, so one more try continues and rebuilds nothing else.
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cargo build --release --locked $feat || { echo "::warning::first Windows build failed (shader generator race); trying once more"; cargo build --release --locked $feat; }
+          else
+            cargo build --release --locked $feat   # drop --locked for the one push that adds a dependency, then commit the new Cargo.lock
+          fi
       - name: The server build needs no desktop libraries
         if: ${{ matrix.server }}
         shell: bash

@@ -2103,7 +2103,9 @@ First release build of these fixes (run 41298470907) failed: `scripts/test_local
 from the printed link, which a log no longer gets; the program now creates `local_token` before naming its path and
 the test reads it from there. Re-test (RunPod CPU pod, 2026-11-01, build without the picture engine): every
 local-server check passed except "image engine is in this build" (expected: CI adds that engine); `local_token` is
-mode 600; Rust 28/28. The Windows build had restored a stale llama.cpp Vulkan build folder from the cache: new cache key.
+mode 600; Rust 28/28. Windows failed twice in llama.cpp's Vulkan shader generator (CMake "Not a file: ...cmake_install.cmake",
+MSB8064), also with no cache: MSBuild's parallel build can run that ExternalProject's install step before its configure
+step finishes. The Windows build now tries once more after a failure (the second try continues from the finished step).
 
 ## Our runs
 
