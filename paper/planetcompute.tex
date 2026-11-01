@@ -614,8 +614,8 @@ decreases; a device's pending credit is added when it reports or disconnects. A 
 specified for the grid but not built. These credits are the PlanetComp points of the
 Executive Summary; credit can be transferred out as the PlanetComp token on the Solana blockchain at
 a published rate; users need no wallet unless they choose to transfer, and the operator can seal an epoch, writing the Merkle root of all
-balances on chain (built) so that anyone can check their own balance. Credit is redeemed one for one as free processing time on the grid,
-$G_d=C_d-\sum_{j\in\mathcal{J}_d}w_j\ge0$. Every check before a transfer, and the balance, live on the server.
+balances on chain (built) so that anyone can check their own balance. Credit is to be redeemed one for one as processing time on the grid,
+$G_d=C_d-\sum_{j\in\mathcal{J}_d}w_j\ge0$ (specified; the pool is free for now). Every check before a transfer, and the balance, live on the server.
 
 \paragraph{Capacity check.} One Durable Object per device sends a capacity test about once a minute: $k$ small chunks of
 the device's own kernel with random seeds, sized for about a second. It times the answer on its own clock (network delay can only lower the measurement) and recomputes eight chunks chosen in secret (six on a GPU); faking a fraction $g$ of the
@@ -916,7 +916,7 @@ $\Delta P$ over $h$ hours (Table~\ref{tab:econ}; assumed values, to be measured,
 Table~\ref{tab:exp}). Electricity and wear are the volunteer's: the terms, the consent text, the program's agreement box and
 \texttt{--help} all say that these costs, including wear of fans, batteries, processors and graphics cards, are
 not reimbursed and that PlanetCompute.ai is not liable for them.
-PlanetCompute is not a source of income; a volunteer's electricity buys credit redeemed as processing time on
+PlanetCompute is not a source of income; a volunteer's electricity buys credit to be redeemed as processing time on
 the grid. Every model licence in the library allows redistribution from PlanetCompute's own storage, with
 conditions (Table~\ref{tab:econ}); non-commercial models are not added.
 
