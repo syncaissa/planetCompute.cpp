@@ -11,7 +11,7 @@ const W = (await import(tmp)).default;
 const UI = readFileSync(process.argv[3], "utf8"), SHOTS = process.argv[4] || "";
 const SRC = readFileSync(process.argv[2], "utf8");
 let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) { pass++; console.log("PASS", n); } else { fail++; console.log("FAIL", n, x === undefined ? "" : JSON.stringify(x).slice(0, 300)); } };
-const CRYPTO = "Check your country's and local laws: if you cannot hold crypto where you live, refrain from transferring any PlanetComp to your wallet, although it may or may not have value. User discretion is required.";
+const CRYPTO = "All PlanetComp is disbursed from the official PlanetCompute wallet. Before transferring any PlanetComp to an external crypto wallet, check the laws in your country and local area. If holding cryptocurrency is not permitted where you live, do not make the transfer, whether or not PlanetComp has any value. If PlanetComp ever gains value, that value can fall or be lost entirely at any time. By transferring PlanetComp, you acknowledge and accept these risks. Use your own discretion; you are responsible for complying with the laws that apply to you.";
 const b = await chromium.launch({ executablePath: process.env.HOME + "/.cache/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell" });
 
 // ---- website ----
@@ -55,7 +55,7 @@ for (const w of [480, 900, 1141, 1280, 1441]) {
   await p.click('header nav button[data-tab="docs"]'); await p.waitForTimeout(200);
   const m = await p.evaluate(() => ({ shown: [...document.querySelectorAll("main > section")].filter((s) => !s.hidden).map((s) => s.id),
     sel: (document.querySelector('header nav button[aria-selected="true"]') || {}).dataset.tab, h2: document.querySelectorAll("#docs .pcdocs h2").length,
-    crypto: document.querySelector("#docs").innerText.replace(/\s+/g, " ").includes("User discretion is required."), wide: document.documentElement.scrollWidth > innerWidth + 1,
+    crypto: document.querySelector("#docs").innerText.replace(/\s+/g, " ").includes("you are responsible for complying with the laws that apply to you."), wide: document.documentElement.scrollWidth > innerWidth + 1,
     navWide: (() => { const n = document.querySelector("header nav"); return n.scrollWidth > n.clientWidth + 1; })() }));
   ok(`program ${w}px: Docs tab shows only the docs section, is selected, 12 sections, crypto disclaimer`, JSON.stringify(m.shown) === '["docs"]' && m.sel === "docs" && m.h2 === 12 && m.crypto, m);
   ok(`program ${w}px: page and tab bar not wider than the window, no script errors`, !m.wide && !m.navWide && errs.length === 0, { m, errs });

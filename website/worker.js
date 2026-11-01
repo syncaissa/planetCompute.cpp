@@ -6055,6 +6055,7 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
         <div class="sec-h">Solana wallet address <span class="muted">· your own wallet (Phantom, Solflare, ...): transfers from your account go here. Only the address: never a key or recovery phrase.</span></div>
         <div class="wrow"><input class="field wamt grow" id="solAddr" autocomplete="off" spellcheck="false" placeholder="Your Solana wallet address"><button class="mini" id="solSave">Update</button><button class="mini" id="solHist">Previous addresses</button></div>
         <div class="note-sm muted" id="solSince"></div>
+        <div class="pc-disclaimer" id="solDisclaimer" style="padding:10px 12px;border-radius:7px;border:1px solid #d4a72c;background:rgba(212,167,44,.08);margin:8px 0;font-size:.85rem;line-height:1.45"><b>Disclaimer.</b> PlanetComp is a ledger of contributions only and may have no monetary value. All PlanetComp is disbursed from the official PlanetCompute wallet. Before transferring any PlanetComp to an external crypto wallet, check the laws in your country and local area. If holding cryptocurrency is not permitted where you live, do not make the transfer, whether or not PlanetComp has any value. If PlanetComp ever gains value, that value can fall or be lost entirely at any time. By transferring PlanetComp, you acknowledge and accept these risks. Use your own discretion; you are responsible for complying with the laws that apply to you.</div>
         <p class="note-sm muted" id="solNotice" style="margin:6px 0 0">Tokens are awarded free of charge by PlanetCompute.ai solely as a record (ledger) of contribution and as a symbolic token of recognition, for bragging rights only. They are not an investment, security, currency, payment, or asset of any kind, and carry no ownership, profit, redemption, or other rights. PlanetCompute.ai makes no claim, promise, or guarantee that tokens have or will ever have any value; any value may be zero. Do not rely on, purchase, or hold them as an asset. Any transfer, sale, or trade is entirely at your own risk, and PlanetCompute.ai accepts no liability for resulting losses.</p>
         <ul class="elist" id="solList" style="display:none"></ul>
         <div class="msg" id="msgSol" role="status"></div>
@@ -9967,6 +9968,7 @@ ${topBar("balance")}
         <h3 style="margin:16px 0 4px;font-size:1rem">Transfers to your wallet</h3>
         <div style="overflow-x:auto"><table class="acttab" id="mvHist"></table></div>
       </div>
+      <div class="pc-disclaimer" id="aDisclaimer" style="padding:10px 12px;border-radius:7px;border:1px solid #d4a72c;background:rgba(212,167,44,.08);margin:8px 0;font-size:.85rem;line-height:1.45"><b>Disclaimer.</b> PlanetComp is a ledger of contributions only and may have no monetary value. All PlanetComp is disbursed from the official PlanetCompute wallet. Before transferring any PlanetComp to an external crypto wallet, check the laws in your country and local area. If holding cryptocurrency is not permitted where you live, do not make the transfer, whether or not PlanetComp has any value. If PlanetComp ever gains value, that value can fall or be lost entirely at any time. By transferring PlanetComp, you acknowledge and accept these risks. Use your own discretion; you are responsible for complying with the laws that apply to you.</div>
       <p class="lead" id="aNotice" style="margin:6px 0 10px;font-size:.85rem">Tokens are awarded free of charge by PlanetCompute.ai solely as a record (ledger) of contribution and as a symbolic token of recognition, for bragging rights only. They are not an investment, security, currency, payment, or asset of any kind, and carry no ownership, profit, redemption, or other rights. PlanetCompute.ai makes no claim, promise, or guarantee that tokens have or will ever have any value; any value may be zero. Do not rely on, purchase, or hold them as an asset. Any transfer, sale, or trade is entirely at your own risk, and PlanetCompute.ai accepts no liability for resulting losses.</p>
       <ul id="aList" hidden style="font:500 .85rem monospace;word-break:break-all"></ul>
       <p class="msg" id="aMsg"></p>
@@ -10588,9 +10590,11 @@ Browsers and Desktops</i>; the code, scripts and tests are at <a href="https://g
 <h2 id="d-disclaimer">11. Disclaimers</h2>
 <h3>PlanetComp points and crypto</h3>
 <div class="warn">
-<p><b>PlanetComp is a ledger of contributions only and may have no monetary value.</b> Check your country's and local
-laws: if you cannot hold crypto where you live, refrain from transferring any PlanetComp to your wallet, although it may
-or may not have value. User discretion is required.</p>
+<p><b>PlanetComp is a ledger of contributions only and may have no monetary value.</b> All PlanetComp is disbursed from the official PlanetCompute wallet. Before transferring any PlanetComp to an
+external crypto wallet, check the laws in your country and local area. If holding cryptocurrency is not permitted
+where you live, do not make the transfer, whether or not PlanetComp has any value. If PlanetComp ever gains value,
+that value can fall or be lost entirely at any time. By transferring PlanetComp, you acknowledge and accept these
+risks. Use your own discretion; you are responsible for complying with the laws that apply to you.</p>
 </div>
 <ul>
   <li><b>No purchase required.</b> You never pay to take part or to receive Compute Credit. Tokens are not payment for goods,
@@ -10844,7 +10848,7 @@ async function handleDownload(request, env, url, which) {
     // sig: Ed25519 of "planetCompute release|<sha256>" by the release key (kept offline); the servers' agents refuse a build without it
     // commit + build_time per build (each platform can be a different build; plan_old_programs #3: the programs compare
     // their own build time with it), and the site's minimum for earning (MIN_EARN_BUILD / MIN_EARN_MODE)
-    for (const k of Object.keys(DOWNLOADS)) { const f = build(k); if (f) builds[k] = { sha256: f.sha256, bytes: f.bytes, url: `/download/${k}`, ...(f.sig ? { sig: f.sig } : {}),
+    for (const k of Object.keys(DOWNLOADS)) { const f = build(k); if (f) builds[k] = { sha256: f.sha256, bytes: f.bytes, url: `/download/${k}`, ...(f.sig ? { sig: f.sig } : {}), ...(f.sig2 ? { sig2: f.sig2 } : {}),
       ...(f.build_time ? { commit: String(f.commit || ""), build_time: Number(f.build_time) } : {}) }; }
     const me = minEarn(env);
     return new Response(JSON.stringify({ version: latest.version, commit: latest.commit || "", builds, ...(me.min ? { min_earn_build: me.min, min_earn_mode: me.mode } : {}) }),

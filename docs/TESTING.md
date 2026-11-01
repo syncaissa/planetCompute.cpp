@@ -2106,6 +2106,14 @@ local-server check passed except "image engine is in this build" (expected: CI a
 mode 600; Rust 28/28. Windows failed twice in llama.cpp's Vulkan shader generator (CMake "Not a file: ...cmake_install.cmake",
 MSB8064), also with no cache: MSBuild's parallel build can run that ExternalProject's install step before its configure
 step finishes. The Windows build now tries once more after a failure (the second try continues from the finished step).
+Live (2026-11-01 12:05 UTC): release c63feab published with sig2 on all five builds; both server rows updated (installed
+file = the published linux-x86_64-server SHA-256). Two faults found before the new agent went live and fixed: the site's
+/download/latest.json did not pass sig2 on, and the agent checked sig2 against the site's name "linux-server" instead of
+the build key "linux-x86_64-server" that publish_client.py signs (checked against the real signature: build key passes,
+site name fails, a changed build time fails, v1 still passes). With the new agent both servers answered Update with "already
+the newest build" (commit c63feab) and wrote bin/planetCompute.build_time (rollback protection on). Program logs are 0600;
+the old logs held the local secret printed by earlier builds, so all four local_token files (2 copies x 2 servers) were
+replaced; agent.log made 0600.
 
 ## Our runs
 

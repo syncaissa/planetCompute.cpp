@@ -32,7 +32,7 @@
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
 \usepackage{multicol}
 \usepackage[authoryear,round]{natbib}
-\setlength{\bibsep}{1pt plus 0.3pt}\renewcommand{\bibfont}{\footnotesize}
+\setlength{\bibsep}{0.3pt plus 0.3pt}\renewcommand{\bibfont}{\footnotesize}
 \usepackage[colorlinks=true,citecolor=green!45!black,linkcolor=blue!70!black,urlcolor=blue!70!black]{hyperref}
 \usepackage{microtype}
 \setlength{\textfloatsep}{10pt plus 2pt minus 2pt}\setlength{\floatsep}{8pt plus 2pt minus 2pt}\setlength{\intextsep}{8pt plus 2pt minus 2pt}
@@ -118,9 +118,12 @@ at first. As more members join and the network becomes self-sufficient, we'll gr
 may eventually phase it out completely.
 
 \begin{pcnotice}
-PlanetComp is a ledger of contributions only and may have no monetary value. Check your country's and local laws:
-if you cannot hold crypto where you live, refrain from transferring any PlanetComp to your wallet, although it may or
-may not have value. User discretion is required.
+PlanetComp is a ledger of contributions only and may have no monetary value. All PlanetComp is disbursed from the
+official PlanetCompute wallet. Before transferring any PlanetComp to an external crypto wallet, check the laws in
+your country and local area. If holding cryptocurrency is not permitted where you live, do not make the transfer,
+whether or not PlanetComp has any value. If PlanetComp ever gains value, that value can fall or be lost entirely at
+any time. By transferring PlanetComp, you acknowledge and accept these risks. Use your own discretion; you are
+responsible for complying with the laws that apply to you.
 \end{pcnotice}
 
 \section{Introduction}
@@ -318,8 +321,8 @@ therefore sizes packs by \emph{time}, per device,
 \min\big(0.05/\lambda_d,\;\text{SLO}\big)\Big),\qquad b_d=\max\big(1,\lfloor \tau_d/t_d\rfloor\big),
 \end{equation}
 where $9T_o$ keeps efficiency at least $90\%$ and $0.05/\lambda_d$ keeps the chance that device $d$ stays
-until the pack ends at least $95\%$. Packs are designed to land between about ten seconds and five minutes of compute; the live split jobs of
-Section~\ref{sec:batchmode}, limited by message size, used far smaller ones.
+until the pack ends at least $95\%$. Packs are designed to take ten seconds to five minutes (the live split jobs of Section~\ref{sec:batchmode},
+limited by message size, used far smaller ones).
 
 \subsection{Verification at a Few Percent}\label{sec:audits}
 
@@ -344,8 +347,8 @@ iff $ap_d(1+H)R\ge c$, which holds for all $c\le R$ when $ap_d(1+H)\ge1$.
 \end{proof}
 
 \noindent With $H=49$, an audit rate of $2\%$ deters whole-output fakes and $4\%$ deters fakes of half the
-steps. Weights are the largest fixed cost (an 8B LLM at 4-bit takes $\approx$6.5~minutes at 12.5~MB/s), so a
-device joins one lane per session and caches weights by hash.
+steps. Weights are the largest fixed cost (an 8B LLM at 4-bit takes $\approx$6.5~minutes at 12.5~MB/s): a device joins
+one lane per session and caches weights by hash.
 
 \section{QuickMode, BatchMode and SherpaHub}\label{sec:batchmode}
 
@@ -403,7 +406,7 @@ that disk's free space limits a job's size.
 
 \paragraph{Why the live jobs were slow.} The second job reached 13.7 billion operations a second on 16 cores,
 about $1.5\%$ of the 926 billion that the kernel's measured speed allows (the 42~min 44~s include about 30~s
-before the first device joined). The protocol, not the kernel, is the cause. A result must fit in one broker message
+before the first device joined). The protocol is the cause. A result must fit in one broker message
 (1~MiB), so a pack holds at most 15 units of $128\times128$ (10.8 on average), about 9~ms of work on four cores;
 each device has one pack in flight; and every message, including the 512~KiB input blocks, crosses the Cloudflare
 broker although the SherpaHub and the devices share one server. From the job's totals each device finished a pack
@@ -438,8 +441,8 @@ with 10\% repeated on another computer with the same seed, and two switches:
 \emph{SupplySimulation} (also contribute) and \emph{DemandSimulation} (also send low-priority test jobs). In an
 eight-hour side-by-side run on 30~October 2026 against five dedicated load scripts on the same server
 (Table~\ref{tab:real}), its jobs were answered almost as often and as fast (a longer tail: they are low
-priority); the scripts were then retired. Without a GPU, pictures are slow there: in an earlier test on the
-same server, a 512$\times$512 Z-Image Turbo picture took 1{,}037~s on about nine CPU cores.
+priority); the scripts were then retired. Without a GPU pictures are slow: an earlier 512$\times$512 Z-Image Turbo picture took 1{,}037~s on about nine of
+its CPU cores.
 
 \section{GPU Measurements}\label{sec:bench}
 
@@ -606,10 +609,8 @@ Adaptive ($q{=}2$, spot $5\%$) & 0.10\% / 1.25 & 0.08\% / 1.25 & 0.22\% / 1.28 &
 
 \paragraph{Credit and ledger.} Credit (\emph{Compute Credit}, in Work Units, WU) measures validated computation. Device $d$'s credit is $C_d=\sum_{u\in\mathcal{V}_d} w_u$ over its validated
 units, where $w_u$ is the unit's benchmark-normalised cost; a verified device that delivers no pack is credited
-from its verified rating (below), never from a self-reported speed. Built today,
-credit is added to each account's balance in Amazon DynamoDB (an available amount, and a lifetime total that never
-decreases when credit is spent); a device's pending credit moves to its session record and the balance when it
-reports or disconnects. A per-pack ledger keyed by pack and device, with clawbacks as reversing entries, is
+from its verified rating, never a self-reported speed. Built today, each account's balance in Amazon DynamoDB holds an available amount and a lifetime total that never
+decreases; a device's pending credit is added when it reports or disconnects. A per-pack ledger keyed by pack and device, with clawbacks as reversing entries, is
 specified for the grid but not built. These credits are the PlanetComp points of the
 Executive Summary; credit can be transferred out as the PlanetComp token on the Solana blockchain at
 a published rate; users need no wallet unless they choose to transfer, and the operator can seal an epoch, writing the Merkle root of all
@@ -687,7 +688,7 @@ If the adversary's devices lie on $S$ networks and each pack uses $n$ distinct n
 $\min(n,S)$ adversarial replicas; hence if $S<q$, $P_{\text{wrong}}=0$.
 \end{proposition}
 
-\noindent This makes a data-centre attack expensive; residential proxies sell diversity, so the penalties remain.
+\noindent This makes a data-centre attack expensive; proxies sell diversity, so penalties remain.
 
 \paragraph{Matching AI outputs.} CPU packs match by SHA-256. GPU inference is not bit-reproducible across
 vendors, so GPU outputs match when perceptually identical, by SSIM \citep{wang2004ssim} against a threshold set
@@ -698,8 +699,7 @@ Diffusion~1.5, carried in each model edition's metadata.
 \begin{table}[ht]
 \centering
 \caption{The same request on two machines (Linux + RTX 4090 vs Windows + Tesla T4): how alike the pictures are.
-Pixel differences on the 0--255 scale; SSIM on grey levels, 7$\times$7 window; recomputed from the pictures by
-\texttt{scripts/compare\_pictures.py}.}\label{tab:xplat}
+Differences on the 0--255 scale; SSIM on grey levels, 7$\times$7 window; from \texttt{scripts/compare\_pictures.py}.}\label{tab:xplat}
 \resizebox{\linewidth}{!}{\begin{tabular}{@{}lrrrr@{}}
 \toprule
 \textbf{Picture (model, seed)} & \textbf{Pixels equal} & \textbf{Mean difference} & \textbf{Within 8 levels} & \textbf{SSIM} \\
@@ -814,8 +814,8 @@ directories peaked at 411 messages a second. This run had the 2\% ordinary cheat
 cheaters were tested only at $10^5$ devices (above), where 84 wrong answers remained. It is a single run with one
 seed.
 
-\paragraph{The cost.} The cost runs of Table~\ref{tab:millioncost} were separate (same seed, cost accounting added), so their job
-counts differ slightly. Priced at list rates around the clock, this original design costs
+\paragraph{The cost.} The cost runs of Table~\ref{tab:millioncost} were separate (same seed), so their job counts
+differ slightly. Priced at list rates around the clock, this original design costs
 about \$111.54 an hour with volunteers' status reports sent on the open WebSocket every five minutes (\$195.70
 with reports to the website each minute, as first built), because about 8{,}700 objects stay awake,
 objects exchange about four messages per WorkPack, and the ledger takes a write per credited device per minute
@@ -856,10 +856,9 @@ Wrong answers delivered and never corrected & 0 & 4 & 0 \\
 \end{table}
 
 \paragraph{What it does not show, and what is next.} Cloudflare's real latency, model speeds, browsers and programs are not measured; behaviour and cheating are
-modelled. The next steps are E9 in Table~\ref{tab:exp}. Clients must reconnect with random delay after an update:
-without it, $10^5$ simulated devices reconnected at about $9\times10^4$ connections a second, against about
-$3\times10^3$ with 30~s of jitter. The design is not tied to Cloudflare: its logic uses five small interfaces (actor runtime, object store,
-database, mailer, secrets) that plain servers can provide, with their own load balancer and message queue.
+modelled. The next steps are E9 in Table~\ref{tab:exp}. After an update clients must reconnect with random delay: $10^5$ simulated
+devices reconnected at about $9\times10^4$ a second without it, about $3\times10^3$ with 30~s of jitter. The logic is not tied to Cloudflare: five small interfaces (actor runtime, object store, database, mailer,
+secrets) can be provided by plain servers with a load balancer and a message queue.
 
 \section{Threat Model and Privacy}\label{sec:threat}
 
@@ -890,9 +889,9 @@ Perceived cryptojacking; antivirus & Explicit opt-in, visible indicator, one-cli
 \end{tabularx}
 \end{table}
 
-\paragraph{What volunteers can see.} A volunteer's machine sees the data it computes on. Fully homomorphic encryption remains orders of magnitude slower for neural networks,
-multi-party computation needs round trips per layer, and attested GPU enclaves exist only on server hardware.
-PlanetCompute therefore offers
+\paragraph{What volunteers can see.} A volunteer's machine sees the data it computes on. Homomorphic encryption is
+orders of magnitude too slow for neural networks, multi-party computation needs round trips per layer, and attested
+GPU enclaves exist only on servers. PlanetCompute therefore offers
 \emph{rotation obfuscation}: for secret orthogonal $Q,R$, $x'=Rx$ and $W'=QWR^{\top}$ give $W'x'=Q(Wx)$, and in
 transformers the rotation can be folded into all weights in advance at no run-time cost
 \citep{ashkboos2024slicegpt,ashkboos2024quarot}. A longer key does not help against a public model: orthogonal
@@ -961,8 +960,8 @@ supplied by contributors' programs and, for now, by the operator's in-house Sher
 
 \paragraph{Grid, step one.} A chat job sent to \texttt{POST /v1/jobs} goes to an idle volunteer program that holds
 the model; it runs at temperature~0 with a seed chosen by the website, and with probability $0.25$ a second
-program runs it too and the answers must match exactly. A live load test first saw a median answer time of 36.8~s because llama.cpp used every hardware thread of a
-loaded server; limiting grid jobs to the shared cores fixed it (Table~\ref{tab:real}).
+program runs it too and the answers must match exactly. A live load test first saw answers take 36.8~s (median) as llama.cpp used every thread of a loaded server;
+limiting grid jobs to the shared cores fixed it (Table~\ref{tab:real}).
 
 \paragraph{A sandboxed native engine.} A job carries a model ID and inputs, never code, but a model file could exploit a parser bug. The program therefore never opens a model itself: a separate \emph{model
 engine} and the image engine run in the operating system's sandbox (Landlock and seccomp on Linux, a sandbox
@@ -1012,7 +1011,7 @@ Computers that answered & the same 5 & the same 5 \\
 
 \subsection{Tests}\label{sec:tests}
 
-Every test is written up step by step, with results, in \texttt{docs/TESTING.md}; Table~\ref{tab:tests} lists the main ones.
+Every test is written up step by step in \texttt{docs/TESTING.md}; Table~\ref{tab:tests} lists the main ones.
 
 \begin{table}[ht]
 \centering
@@ -1056,15 +1055,14 @@ Coinhive (2017--19)                       & \cmark & \xmark & \xmark & \cmark & 
 \end{tabular}}
 \end{table}
 
-Table~\ref{tab:related} summarises the comparison. BOINC \citep{anderson2004boinc,anderson2020boinc} is the closest prior work and the source of PlanetCompute's
-validation vocabulary, but ships native executables per platform with its account's privileges, has no browser
-host, and can require distinct users or hosts per quorum, not distinct networks. Gray computing
+BOINC \citep{anderson2004boinc,anderson2020boinc}, the closest prior work (Table~\ref{tab:related}) and the source
+of PlanetCompute's validation vocabulary, ships native executables per platform with its account's privileges, has no
+browser host, and can require distinct users or hosts per quorum, not distinct networks. Gray computing
 \citep{pan2015gray} and Pando \citep{lavoie2019pando} computed in browsers with JavaScript, and WebAssembly
 remains slower than native code \citep{jangda2019notsofast}; Golem \citep{golem2016} and Salad \citep{salad} sell
 consumer compute through VMs or containers; Petals \citep{borzunov2023petals} and
-\citet{ryabinin2020moe} serve or train large models across peers. Backup tasks \citep{dean2004mapreduce} and
-split-frame rendering have precedents; no surveyed system combines these ideas for AI inference on untrusted
-consumer machines with Freivalds-checked maths packs.
+\citet{ryabinin2020moe} serve or train large models across peers. Backup tasks \citep{dean2004mapreduce} and split-frame
+rendering have precedents; no surveyed system combines these ideas for AI inference on untrusted consumer machines.
 
 \section{Open Challenges and Known Gaps}\label{sec:gaps}
 
@@ -1110,22 +1108,18 @@ GPU leases on real WebGPU hardware, and strikes for programs whose grid answers 
 \section{Conclusion}
 
 PlanetCompute is designed to turn idle consumer machines into one AI inference grid, with credit redeemable as
-processing time; so far it has run only on the operator's servers. It cuts the work, not the model; specifies GPU
-audits costing a few percent offline; lets browsers with no model compute exactly checked maths packs; shows in
-simulation that racing is safe with spare replicas, network-distinct quorums and clawback, with a hybrid rule both
-fast and fair; and, at a million simulated devices, delivered no uncorrected wrong answer in the final designs.
-Live tests with real volunteers, the audits inside the program and the experiments of Table~\ref{tab:exp} come
-next; the code, scripts and raw results behind every number here are public at \url{\coderepo}. 
-
-
-
-
+processing time; so far its grid has run only on the operator's servers. It cuts the work, not the model; specifies
+GPU audits costing a few percent offline; lets browsers with no model compute exactly checked maths packs; shows in
+simulation that racing with spare replicas, network-distinct quorums and clawback is safe, fast and fair; and, at a
+million simulated devices, delivered no uncorrected wrong answer in the final designs. Live tests with volunteers,
+the audits in the program and the experiments of Table~\ref{tab:exp} come next; the code, scripts and raw results
+behind every number are public at \url{\coderepo}.
 
 \bibliographystyle{plainnat}
 \begin{multicols}{2}
 \bibliography{references}
 \end{multicols}
-\nopagebreak
-\begin{center}\small \paperaffil\ \textbullet\ \texttt{\paperemail}\end{center}
+\nopagebreak\vspace{-2pt}
+\centerline{\small \paperaffil\ \textbullet\ \texttt{\paperemail}}
 
 \end{document}

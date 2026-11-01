@@ -416,7 +416,7 @@ class Agent:
             except Exception:
                 have_bt = 0
             if b.get("sig2"):
-                ok = ed25519_verify(RELEASE_PUBKEY, f"planetCompute release v2|{b['sha256']}|{bt}|linux-server".encode(), base64.b64decode(b.get("sig2") or ""))
+                ok = ed25519_verify(RELEASE_PUBKEY, f"planetCompute release v2|{b['sha256']}|{bt}|linux-x86_64-server".encode(), base64.b64decode(b.get("sig2") or ""))
             else:
                 ok = not have_bt and ed25519_verify(RELEASE_PUBKEY, f"planetCompute release|{b['sha256']}".encode(), base64.b64decode(b.get("sig") or ""))
             if not ok:
@@ -432,7 +432,7 @@ class Agent:
                 if b.get("sig2") and bt and not have_bt:          # start the rollback protection on this build too (P3)
                     with open(BIN + ".build_time", "w") as f:
                         f.write(str(bt))
-                self.update_last = {"at": iso(), "result": "already the newest build", "commit": lat.get("commit", "")[:7]}
+                self.update_last = {"at": iso(), "result": "already the newest build", "commit": (b.get("commit") or lat.get("commit", ""))[:7]}
                 return
             tmp = BIN + ".new"
             h = hashlib.sha256()
@@ -455,8 +455,8 @@ class Agent:
                 with open(BIN + ".build_time", "w") as f:
                     f.write(str(bt))
             self.version = self.version_of_bin()
-            self.update_last = {"at": iso(), "result": "updated", "commit": lat.get("commit", "")[:7], "sha256": b["sha256"][:16]}
-            log("updated to", lat.get("commit", "")[:7])
+            self.update_last = {"at": iso(), "result": "updated", "commit": (b.get("commit") or lat.get("commit", ""))[:7], "sha256": b["sha256"][:16]}
+            log("updated to", (b.get("commit") or lat.get("commit", ""))[:7])
         except Exception as e:
             self.update_last = {"at": iso(), "result": "FAILED: " + str(e)[:150]}
             log("update failed:", e)
