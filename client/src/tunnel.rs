@@ -136,7 +136,11 @@ async fn relay(st: &Local, v: Value, tx: &tokio::sync::mpsc::Sender<String>) {
         p if p.starts_with("/?") => "/local/",
         p => p,
     };
-    let allowed = path.starts_with("/local/") || path.starts_with("/api/") || path.starts_with("/v1/");
+    // security review P5: the checks below look at the start of the path, so a path that could be rewritten on the way
+    // (dot segments, encoded dots or slashes, backslashes, double slashes) is refused before them
+    let low = path.split('?').next().unwrap_or("").to_ascii_lowercase();
+    let tricky = low.contains("..") || low.contains("%2e") || low.contains("%2f") || low.contains("%5c") || low.contains('\\') || low.contains("//") || low.contains("/./");
+    let allowed = !tricky && (path.starts_with("/local/") || path.starts_with("/api/") || path.starts_with("/v1/"));
     if !allowed || path.starts_with("/local/quit") || path.starts_with("/local/close") || path.starts_with("/local/open") || path.starts_with("/local/image/folder") || path.starts_with("/local/link/") || path.starts_with("/local/storage/open") {
         send(json!({"t": "res", "id": id, "status": 403, "ct": "text/plain", "body": B64.encode(b"Not over the tunnel.")})).await;
         return;

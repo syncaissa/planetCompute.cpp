@@ -170,12 +170,15 @@ ok("10 an old /u/ link: its folder is made (keeping its 41 views) and it moves t
 aePoints.length = 0;
 r = await W.fetch(req(`/api/view?t=${T1}&s=1`, { headers: { origin: "https://my.planetcompute.ai", "user-agent": "Mozilla/5.0" } }), E);
 ok("11 /api/view: one data point (no database), open to any page (CORS *)", r.status === 204 && aePoints.length === 1 && aePoints[0].indexes[0] === T1 && r.headers.get("access-control-allow-origin") === "*", aePoints);
-await W.fetch(req(`/api/view?t=${T1}&s=100`, { headers: { "user-agent": "Mozilla/5.0" } }), E);
-ok("12 a sampled view counts as its sample size", aePoints[1] && aePoints[1].doubles[0] === 100, aePoints);
+// security review L2: the sample size is the site's own setting (MEDIA_VIEWS_SAMPLE), never the number in the request
+await W.fetch(req(`/api/view?t=${T1}&s=100`, { headers: { "user-agent": "Mozilla/5.0" } }), { ...E, MEDIA_VIEWS_SAMPLE: "100" });
+await W.fetch(req(`/api/view?t=${T1}&s=1000000`, { headers: { "user-agent": "Mozilla/5.0" } }), E);
+ok("12 a sampled view counts as the site's sample size; a sample size in the request is ignored",
+  aePoints[1] && aePoints[1].doubles[0] === 100 && aePoints[2] && aePoints[2].doubles[0] === Number(E.MEDIA_VIEWS_SAMPLE || 1), aePoints);
 await W.fetch(req(`/api/view?t=${T1}`, { headers: { "user-agent": "WhatsApp/2.0" } }), E);
 await W.fetch(req(`/api/view?t=${T1}`, { headers: { "user-agent": "Mozilla/5.0" } }), env({ MEDIA_VIEWS_COUNT_ACTIVE: "0" }));
 r = await W.fetch(req(`/api/view?t=bad`), E);
-ok("13 not counted: link-preview bots, MEDIA_VIEWS_COUNT_ACTIVE=0; a bad token is refused", aePoints.length === 2 && r.status === 400, aePoints.length);
+ok("13 not counted: link-preview bots, MEDIA_VIEWS_COUNT_ACTIVE=0; a bad token is refused", aePoints.length === 3 && r.status === 400, aePoints.length);
 // ---- the page's calls with the visitor's sign-in
 r = await W.fetch(req("/api/media/report", { method: "OPTIONS", headers: { origin: "https://my.planetcompute.ai", "access-control-request-method": "POST" } }), E);
 ok("14 preflight from my.: allowed with credentials", r.status === 204 && r.headers.get("access-control-allow-origin") === "https://my.planetcompute.ai" && r.headers.get("access-control-allow-credentials") === "true");

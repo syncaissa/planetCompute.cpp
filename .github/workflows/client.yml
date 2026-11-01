@@ -22,6 +22,9 @@ on:
         type: choice
         default: all
         options: [all, linux, macos-aarch64, windows-x86_64, linux-x86_64, linux-x86_64-server, linux-x86_64-vulkan]
+permissions:
+  contents: read   # security review P11: the token can only read
+
 jobs:
   # the workpack crate on its own (kernels, wire format, SherpaHub + fault simulator; docs/TESTING.md tests 63, 64):
   # seconds, not the 40 minutes of a full build. Also the browser kernel against the same pinned vectors.
@@ -29,8 +32,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec  # stable (pinned, security review P11)
+        with: { toolchain: stable }
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2 (pinned, security review P11)
         with: { workspaces: client/workpack }
       - name: Crate tests (kernels, wire, SherpaHub fault simulator)
         working-directory: client/workpack
@@ -81,10 +85,11 @@ jobs:
       VERSION: ${{ inputs.version || '0.1.0' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec  # stable (pinned, security review P11)
+        with: { toolchain: stable }
       # macOS: a cache made on the retired macos-14 image carried llama.cpp's CMake setup (OpenSSL paths) that do not
       # exist on macos-15 (2026-10-31: cpp-httplib "openssl/err.h not found"): its own key, so it builds fresh once
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2 (pinned, security review P11)
         with: { workspaces: client, key: "${{ matrix.key }}${{ matrix.os == 'macos-15' && '-macos15' || '' }}" }
       - name: Linux libraries (WebKitGTK for the window; clang for llama.cpp's bindings)
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
@@ -107,7 +112,7 @@ jobs:
           Add-Content $env:GITHUB_ENV "VULKAN_LOADER_DLL=$dll"
       - name: Vulkan SDK (Linux)
         if: ${{ matrix.vulkan && !startsWith(matrix.os, 'windows') }}
-        uses: jakoch/install-vulkan-sdk-action@v1
+        uses: jakoch/install-vulkan-sdk-action@d17de7e2f5e50efb5d2123efed18497d3c58c533  # v1 (pinned, security review P11)
         with: { vulkan_version: "1.4.309.0", install_runtime: true, cache: true, stripdown: true }
       - name: libclang for llama.cpp's bindings, and a short build folder (Windows)
         if: ${{ startsWith(matrix.os, 'windows') }}

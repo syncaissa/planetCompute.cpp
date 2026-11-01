@@ -28,15 +28,17 @@ pub fn status() -> &'static str {
 
 #[cfg(has_vkloader)]
 fn pick() -> &'static str {
-    use windows_sys::Win32::System::LibraryLoader::LoadLibraryW;
+    use windows_sys::Win32::System::LibraryLoader::{LoadLibraryExW, LoadLibraryW, LOAD_LIBRARY_SEARCH_SYSTEM32};
     let wide = |s: &std::ffi::OsStr| -> Vec<u16> {
         use std::os::windows::ffi::OsStrExt;
         s.encode_wide().chain(std::iter::once(0)).collect()
     };
     let copy = crate::image::data().join("bin").join("vulkan-1.dll");
-    // the PC's own loader (from the graphics driver): use it, and drop a copy written on an earlier start
+    // the PC's own loader (from the graphics driver): use it, and drop a copy written on an earlier start. Only from
+    // System32, never from the program's own folder (often Downloads, where a planted vulkan-1.dll would be loaded:
+    // security review P9)
     let own = wide(std::ffi::OsStr::new("vulkan-1.dll"));
-    if !unsafe { LoadLibraryW(own.as_ptr()) }.is_null() {
+    if !unsafe { LoadLibraryExW(own.as_ptr(), std::ptr::null_mut(), LOAD_LIBRARY_SEARCH_SYSTEM32) }.is_null() {
         let _ = std::fs::remove_file(&copy);
         return "Vulkan: this computer's loader";
     }

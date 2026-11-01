@@ -37,6 +37,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const BATCH: usize = 100; // the website takes at most 100 beats per request (HB_BATCH)
 const MAX_PENDING: usize = 3_000_000;
+const MIN_BEAT_GAP_S: u64 = 5; // security review P2
+const SESSIONS_PER_DEVICE: usize = 3; // security review P2
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -58,6 +60,9 @@ struct App {
     ingest_s: u64,
     data: std::path::PathBuf,
     pending: Mutex<HashMap<(String, String), Beat>>, // (device, session) -> newest beat
+    /// device -> its sessions held now, oldest first, and when it last sent a beat (security review P2: one pass cannot
+    /// create sessions without end or flood the server)
+    per_dev: Mutex<HashMap<String, (Vec<String>, u64)>>,
     journal: Mutex<Option<std::fs::File>>,
     http: reqwest::Client,
 }
@@ -140,12 +145,32 @@ fn take_beat(app: &App, h: &HeaderMap, body: &Bytes) -> Response {
     let state = b["state"].as_str().unwrap_or("");
     let hv = |k: &str| h.get(k).and_then(|v| v.to_str().ok()).unwrap_or("").chars().take(45).collect::<String>();
     let t = now();
+    // security review P2: at most one beat per device every MIN_BEAT_GAP_S (a volunteer sends one every few minutes),
+    // and at most SESSIONS_PER_DEVICE sessions held per device (a new one replaces the device's oldest)
+    let mut drop_session: Option<String> = None;
+    {
+        let mut pd = app.per_dev.lock().unwrap();
+        let e = pd.entry(device.clone()).or_insert_with(|| (Vec::new(), 0));
+        if e.1 > 0 && t.saturating_sub(e.1) < MIN_BEAT_GAP_S {
+            return reply(StatusCode::TOO_MANY_REQUESTS, json!({"error": "too often"}));
+        }
+        e.1 = t;
+        if !e.0.contains(&session) {
+            e.0.push(session.clone());
+            if e.0.len() > SESSIONS_PER_DEVICE {
+                drop_session = Some(e.0.remove(0));
+            }
+        }
+    }
     let mut beat = Beat { at: t, first: t, urgent: state == "paused" || state == "stopped", ip: hv("cf-connecting-ip"),
                           country: hv("cf-ipcountry").chars().take(4).collect(), token: token.to_string(), body: b };
     {
         let mut p = app.pending.lock().unwrap();
         if p.len() >= MAX_PENDING && !p.contains_key(&(device.clone(), session.clone())) {
             return reply(StatusCode::SERVICE_UNAVAILABLE, json!({"error": "busy"}));   // the volunteer falls back to the website
+        }
+        if let Some(old_s) = drop_session {
+            p.remove(&(device.clone(), old_s));
         }
         if let Some(old) = p.get(&(device.clone(), session.clone())) {
             beat.first = old.first;
@@ -229,6 +254,9 @@ async fn ingest_once(app: &App) -> Result<usize, String> {
         for (k, b) in chunk {
             if p.get(k).map_or(false, |cur| cur.at == b.at) {
                 p.remove(k);
+                if let Some(e) = app.per_dev.lock().unwrap().get_mut(&k.0) {
+                    e.0.retain(|x| x != &k.1);
+                }
             }
         }
         sent += chunk.len();
@@ -281,6 +309,7 @@ async fn main() {
         ingest_s: env("HB_INGEST_S", "600").parse().unwrap_or(600).clamp(30, 900),
         data: data.clone(),
         pending: Mutex::new(HashMap::new()),
+        per_dev: Mutex::new(HashMap::new()),
         journal: Mutex::new(None),
         http: reqwest::Client::builder().timeout(Duration::from_secs(60)).user_agent(concat!("hbserver/", env!("CARGO_PKG_VERSION"))).build().unwrap(),
     });

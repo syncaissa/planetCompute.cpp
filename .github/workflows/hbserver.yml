@@ -8,6 +8,9 @@ on:
   push:
     branches: [main]
     paths: ["hbserver/**", ".github/workflows/hbserver.yml"]
+permissions:
+  contents: read   # security review P11: the token can only read
+
 jobs:
   build:
     strategy:
@@ -23,7 +26,7 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq musl-tools > /dev/null
           rustup target add ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2 (pinned, security review P11)
         with: { workspaces: hbserver }
       - name: Build
         working-directory: hbserver

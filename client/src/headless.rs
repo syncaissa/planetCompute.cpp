@@ -5,8 +5,14 @@
 pub fn run(listener: std::net::TcpListener, port: u16, args: &[String]) -> i32 {
     println!("planetCompute {} --headless ({} {})", env!("CARGO_PKG_VERSION"), std::env::consts::OS, std::env::consts::ARCH);
     println!("{}", super::engine::info());
-    println!("Sign in and contribute at http://localhost:{port}/local/?t={}", super::server::local_token());
-    println!("  (the ?t= part is this program's secret: keep the link to yourself)");
+    // the secret only on a terminal someone is watching, never into a log file (security review P4)
+    if std::io::IsTerminal::is_terminal(&std::io::stdout()) {
+        println!("Sign in and contribute at http://localhost:{port}/local/?t={}", super::server::local_token());
+        println!("  (the ?t= part is this program's secret: keep the link to yourself)");
+    } else {
+        let f = super::server::config_file("local_token").map(|p| p.display().to_string()).unwrap_or_else(|| "local_token in its config folder".into());
+        println!("Sign in and contribute at http://localhost:{port}/local/?t=<secret>: the secret is in {f} (readable only by this user)");
+    }
     println!("  from another computer: ssh -L {port}:localhost:{port} <this server>, then open that link there");
     let hub = match super::sherpa::hub_opts(args) {
         Ok(h) => h,

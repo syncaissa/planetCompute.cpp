@@ -810,7 +810,9 @@ async fn content_list() -> Json<serde_json::Value> {
 fn content_path(name: &str) -> Option<std::path::PathBuf> {
     let ok = !name.is_empty() && !name.starts_with('.') && !name.contains(['/', '\\', ':']) && !name.contains("..");
     let p = crate::image::folder().join(name);
-    (ok && p.is_file()).then_some(p)
+    // a real file only, never a link (the image engine writes this folder: a link there must not point Save or Save to
+    // cloud at another file, security review P10)
+    (ok && std::fs::symlink_metadata(&p).is_ok_and(|m| m.file_type().is_file())).then_some(p)
 }
 
 async fn content_file(axum::extract::Path(name): axum::extract::Path<String>) -> Response {
@@ -1158,7 +1160,7 @@ async fn pass(st: Arc<Local>, method: Method, uri: Uri, headers: HeaderMap, body
     resp
 }
 
-fn config_file(name: &str) -> Option<std::path::PathBuf> {
+pub(crate) fn config_file(name: &str) -> Option<std::path::PathBuf> {
     dirs::config_dir().map(|d| d.join("planetCompute").join(name))
 }
 

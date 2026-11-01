@@ -7,14 +7,14 @@ use std::net::TcpStream;
 use std::time::{Duration, Instant};
 
 /// A tiny HTTP/1.1 call to the local web server; the body, or None if nothing answered.
-fn local_call(port: u16, method: &str, path: &str) -> Option<String> {
+fn local_call(port: u16, method: &str, path: &str, with_secret: bool) -> Option<String> {
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
     let mut s = TcpStream::connect_timeout(&addr, Duration::from_secs(2)).ok()?;
     s.set_read_timeout(Some(Duration::from_secs(3))).ok()?;
-    let req = format!(
-        "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nx-planetcompute: quit\r\nAuthorization: Bearer {}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
-        crate::server::local_token()   // the same secret for every copy of this installation (security review E1)
-    );
+    // the secret (the same for every copy of this installation, security review E1) only once the listener is known to
+    // be a planetCompute program (security review P8)
+    let auth = if with_secret { format!("Authorization: Bearer {}\r\n", crate::server::local_token()) } else { String::new() };
+    let req = format!("{method} {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nx-planetcompute: quit\r\n{auth}Content-Length: 0\r\nConnection: close\r\n\r\n");
     s.write_all(req.as_bytes()).ok()?;
     let mut out = String::new();
     let _ = s.read_to_string(&mut out);
@@ -45,8 +45,36 @@ fn run_quietly(cmd: &str, args: &[&str]) {
     let _ = c.status();
 }
 
+/// The process is a planetCompute program (its executable is called planetCompute...), checked by the system, not by
+/// what the listener says (security review P8).
+fn pid_is_planetcompute(pid: u32) -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        std::fs::read_link(format!("/proc/{pid}/exe")).ok().and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_lowercase()))
+            .is_some_and(|n| n.starts_with("planetcompute"))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("ps").args(["-p", &pid.to_string(), "-o", "comm="]).output().ok()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().rsplit('/').next().unwrap_or("").to_lowercase())
+            .is_some_and(|n| n.starts_with("planetcompute"))
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("tasklist").args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"]).creation_flags(0x0800_0000).output().ok()
+            .map(|o| String::from_utf8_lossy(&o.stdout).to_lowercase())
+            .is_some_and(|t| t.trim_start_matches('"').starts_with("planetcompute"))
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+    {
+        let _ = pid;
+        false
+    }
+}
+
 fn kill_pid(pid: u32) {
-    if pid == std::process::id() {
+    if pid == std::process::id() || !pid_is_planetcompute(pid) {
         return;
     }
     #[cfg(windows)]
@@ -77,14 +105,20 @@ pub fn take_port(port: u16) -> Result<(std::net::TcpListener, Option<u32>), Stri
     if let Ok(l) = crate::server::bind(port) {
         return Ok((l, None));
     }
-    let info = local_call(port, "GET", "/local/info")
+    // /local/info needs the secret too (the local server answers nothing without it); what the answer says is then
+    // checked against the system before anything is killed (security review P8)
+    let info = local_call(port, "GET", "/local/info", true)
         .and_then(|b| serde_json::from_str::<serde_json::Value>(&b).ok())
         .filter(|v| v.get("version").is_some() && v.get("port").is_some());
     let Some(info) = info else {
         return Err(format!("port {port} is used by another program. Start planetCompute with --port <n>."));
     };
     let old = info.get("pid").and_then(|p| p.as_u64()).map(|p| p as u32);
-    let _ = local_call(port, "POST", "/local/quit");
+    // a listener whose reported process is not planetCompute is left alone (security review P8)
+    if old.is_some_and(|pid| !pid_is_planetcompute(pid)) {
+        return Err(format!("port {port} is used by another program. Start planetCompute with --port <n>."));
+    }
+    let _ = local_call(port, "POST", "/local/quit", old.is_some());
     if let Some(l) = wait_bind(port, 5) {
         return Ok((l, Some(old.unwrap_or(0))));
     }

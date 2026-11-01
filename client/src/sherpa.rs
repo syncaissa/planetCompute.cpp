@@ -143,6 +143,12 @@ pub fn hub_opts(args: &[String]) -> Result<Option<HubOpts>, String> {
     Ok(Some(o))
 }
 
+/// A job's folder under sherpahub/jobs: only for an ID of 16 hex digits (security review P6: an ID from the site is
+/// never a path).
+fn job_dir(id: &str) -> Option<PathBuf> {
+    (id.len() == 16 && id.bytes().all(|b| b.is_ascii_hexdigit())).then(|| hub_dir().join("jobs").join(id))
+}
+
 fn hub_dir() -> PathBuf {
     dirs::data_dir().unwrap_or_else(std::env::temp_dir).join("planetCompute").join("sherpahub")
 }
@@ -159,7 +165,7 @@ fn hub_config() -> Config {
 /// A matrix job: the one of the command line ("local", folder sherpahub/current) or one of the tab (folder jobs/<id>).
 fn open_matmul(id: &str, m: usize, k: usize, n: usize, tile: usize) -> Result<Hub, String> {
     let local = id == "local";
-    let dir = if local { hub_dir().join("current") } else { hub_dir().join("jobs").join(id) };
+    let dir = if local { hub_dir().join("current") } else { job_dir(id).ok_or_else(|| format!("bad job id {id:?}"))? };
     if dir.join("job.hdr").exists() {
         match Hub::resume(&dir, hub_config()) {
             // every unit done = the job ended (its final check ran before the stop): a local job starts again
@@ -209,6 +215,8 @@ struct DevInfo {
     in_mm: bool,
     /// Processor cores it computes with (from its hello): prompts go to the free device with the most first.
     cores: u64,
+    /// account:device, from the broker (it knows the device's sign-in); empty from an older broker
+    owner: String,
 }
 
 struct MmRun {
@@ -333,7 +341,10 @@ fn start_next(run: &mut HubRun, out: &mut Outq) {
         if let Some(i) = next_prompts(&run.queue) {
             let j = run.queue.remove(i).unwrap();
             match PromptRun::new(&j) {
-                Some(p) => {
+                Some(mut p) => {
+                    for (d, info) in run.devs.iter() {
+                        p.set_owner(*d, &info.owner);
+                    }
                     hsay!("SherpaHub: prompts job {}: {} {} prompts, model {}", p.id, p.total(), p.task, p.model);
                     out.line(json!({"t": "jstate", "job": p.id, "state": "running", "note": format!("started: {} of {} prompts to do", p.total() - p.done(), p.total())}));
                     // the programs that have the model work on prompts now (not on matrix packs)
@@ -392,7 +403,9 @@ fn mm_outs(run: &mut HubRun, outs: Vec<Out>, out: &mut Outq) {
                 if id != "local" {
                     let note = if ok { format!("DONE in {secs:.0} s: all {} pieces checked and the whole product passed the final check ({gop:.1} GOP)", j.units()) } else { "FAILED the final whole-product check".into() };
                     out.line(json!({"t": "jstate", "job": id, "state": if ok { "done" } else { "failed" }, "note": note}));
-                    let _ = std::fs::remove_dir_all(hub_dir().join("jobs").join(&id)); // the product is not kept (a test job)
+                    if let Some(d) = job_dir(&id) {
+                        let _ = std::fs::remove_dir_all(d); // the product is not kept (a test job)
+                    }
                 } else if run.opts.repeat {
                     let (m, k, n, tile) = run.opts.job.unwrap();
                     run.queue.push_back(json!({"id": "local", "kind": "matmul", "m": m, "k": k, "n": n, "tile": tile}));
@@ -455,7 +468,9 @@ fn cancel(run: &mut HubRun, id: &str, why: &str, out: &mut Outq) {
     if run.mm.as_ref().is_some_and(|m| m.id == id) {
         hsay!("SherpaHub: matrix job {id} stopped ({why})");
         run.mm = None;
-        let _ = std::fs::remove_dir_all(hub_dir().join("jobs").join(id));
+        if let Some(d) = job_dir(id) {
+            let _ = std::fs::remove_dir_all(d);
+        }
         for d in run.devs.values_mut() {
             d.in_mm = false;
         }
@@ -537,11 +552,13 @@ async fn hub_once(st: &Arc<Local>, run: &mut HubRun) -> Result<(), String> {
                             let for_prompts = run.pr.as_ref().is_some_and(|p| models.contains(&p.model));
                             let in_mm = run.mm.is_some() && !for_prompts;
                             let cores = v["cores"].as_u64().unwrap_or(1).max(1);
-                            run.devs.insert(dev, DevInfo { cache, models, in_mm, cores });
+                            let owner = v["owner"].as_str().unwrap_or("").chars().filter(|c| c.is_ascii_alphanumeric() || *c == ':').take(64).collect::<String>();
+                            run.devs.insert(dev, DevInfo { cache, models, in_mm, cores, owner: owner.clone() });
                             // prompts it is still making from before its connection dropped stay its own
                             let busy: Vec<(String, usize, u8)> = v["busy"].as_array().map(|a| a.iter().filter_map(|b|
                                 Some((b["job"].as_str()?.to_string(), b["n"].as_u64()? as usize, b["copy"].as_u64().unwrap_or(0) as u8))).collect()).unwrap_or_default();
                             if let Some(p) = run.pr.as_mut() {
+                                p.set_owner(dev, &owner);
                                 p.adopt(now, dev, &busy);
                             }
                             if in_mm {

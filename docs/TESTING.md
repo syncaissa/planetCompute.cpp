@@ -2065,10 +2065,46 @@ tab bar and page fit, My Balance still opens, the menu item exists.
 Result (Cloud9, 2026-11-01): 34/34. Regression: test_inference_ui 34/35, the same as before the change (check 29 expects
 older pool-note wording; not caused by this change).
 
+## 98. Security fixes from the 2026-11-01 code review (website, program, servers, release signing)
+
+Two independent read-only reviews of the open-source code; every fix below was re-checked in the code.
+Website (`website/worker.js`): "priority: low" (unpaid test traffic) only for worker-scoped sessions, and low jobs earn
+nothing; a device counts as checked by the capacity check only while the check is under 15 minutes old, and the mark is
+cleared when its last connection closes; a withdrawal to a wallet linked in the last 24 hours waits until the 24 hours
+are over, and every wallet link sends an e-mail "A wallet was linked to your PlanetCompute account"; the device page
+gives its ticket only to a same-site request (otherwise an "Open your computer?" page asks first); adding an e-mail
+address is limited per network and per account (5 an hour, 10 a day); a sign-in code for a new account is honoured only
+if the new-account checks ran at its start; the shared sign-in limit is larger and refuses (503) when it cannot be read;
+the view counter counts each view once; wrong sign-in codes lock the address for the day after 15.
+Program (`client/src`): SherpaHub prompt results only from the device given the task (or another device of the same
+owner taking it over after 5 minutes), the check copy never from the same owner, at most 256 MB per task; job folders
+must be hex ids; the heartbeat-server address is checked after parsing; tunnel paths with `..` and other tricky forms
+are refused; the instance check kills only a process that is really planetCompute; on Windows the Vulkan loader is
+loaded from System32 only; saved files refuse symbolic links and the Linux sandbox gives no right to make links,
+devices, sockets or pipes; the local page link with its secret is printed only on a terminal (otherwise the path of the
+file holding it). Heartbeat server (`hbserver`): at most 3 sessions per device and one beat per 5 s. Releases: a second
+signature `sig2` covers sha256, build time and key (`scripts/publish_client.py`); `workhorse/whagent.py` checks it and
+refuses a build older than the one it runs (and a build with only the old signature once it has seen a new one); its
+logs are 0600. CI: workflows read-only (`permissions: contents: read`), actions pinned by commit SHA.
+Steps: (1) RunPod CPU pod: `cargo build --release`, `cargo test --no-default-features --features llama` (the SherpaHub
+reconnect test now checks that a stranger cannot take over a task), `planetcompute --workpack-check`; `cargo build
+--release` in `hbserver`. (2) Cloud9, old (live) and new worker side by side with the same scripts:
+`node scripts/test_my_planetcompute.mjs website/worker.js` (checks 12 and 13: the view counter), `node
+scripts/test_grid_jobs.mjs website/worker.js` with the pctest AWS tables (12b low jobs earn nothing, 12c "low" from an
+ordinary sign-in is a normal job), `test_work_audit`, `test_signup_check`, `test_auth_codes`.
+Result (2026-11-01): Rust 28/28, workpack check ALL PASS, hbserver builds; test_my_planetcompute 26/26, test_grid_jobs
+22/22, test_work_audit 23/23, test_signup_check 6/6, test_auth_codes 6/7 (the same on the old code: not caused by this
+change). test_site_wallets and test_solana_address fail the same way on the old and the new code (a time-out and a
+missing path argument): not caused by this change, still to be looked at. Windows-only code (the Vulkan loader) is
+compiled only by CI. Not changed (accepted or later): the "made here" registry accepts any registered hash; CSP still
+allows inline scripts; the B2 key can write the releases bucket; the model list is not signed offline; no seccomp on
+ARM Linux; the macOS sandbox profile allows by default.
+
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-01 10:25 | 98 security fixes | site dea135ea; program (this commit) | Rust 28/28, workpack ALL PASS; site tests as old code + new checks pass (grid 22/22, my 26/26, audit 23/23); deployed |
 | 2026-10-31 19:00 | 92 close message now 10 s (fallback 13 s) | program (this commit) | 92 9/9 with OK (10), countdown 8-7 after 2 s, hide after 10 s once |
 | 2026-10-31 18:09 | 95 split matmul job live (65536x4096x65536, tile 128) | site 44f9a1a5; program ef32a3d | DONE in 42 min 44 s: 262,144/262,144 units checked + final check passed, 4 devices, 0 failed, 0 strikes, 33 timeouts resent, ~13.7 GOP/s |
 | 2026-10-31 17:22 | 95 split matmul job live (4096^3, tile 64) | site 44f9a1a5; program ef32a3d | DONE: 4,096/4,096 units checked + final check passed, 4 devices, 0 strikes, ~15-20 s |

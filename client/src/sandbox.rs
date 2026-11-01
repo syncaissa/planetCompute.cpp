@@ -324,6 +324,11 @@ mod linux {
     const WRITE_FILE: u64 = 1 << 1;
     const READ_FILE: u64 = 1 << 2;
     const READ_DIR: u64 = 1 << 3;
+    const MAKE_CHAR: u64 = 1 << 6;
+    const MAKE_SOCK: u64 = 1 << 9;
+    const MAKE_FIFO: u64 = 1 << 10;
+    const MAKE_BLOCK: u64 = 1 << 11;
+    const MAKE_SYM: u64 = 1 << 12;
     const REFER: u64 = 1 << 13;
     const TRUNCATE: u64 = 1 << 14;
 
@@ -416,7 +421,9 @@ mod linux {
             add(p.as_path(), READ_FILE | READ_DIR);
         }
         for p in write {
-            add(p.as_path(), handled & !EXECUTE); // make, change and remove files there, never run them
+            // make, change and remove plain files and folders there; never run them, and never links, sockets, pipes or
+            // device files (security review P10: a link in the pictures folder must not point elsewhere)
+            add(p.as_path(), handled & !(EXECUTE | MAKE_SYM | MAKE_CHAR | MAKE_SOCK | MAKE_FIFO | MAKE_BLOCK));
         }
         add(exe, EXECUTE | READ_FILE); // the engine itself is the only program it may run
         for p in LOADERS {

@@ -13,7 +13,8 @@ const swap = (o, n) => { if (!src.includes(o)) throw new Error("not found: " + o
 // the test's model library (the test tables have none): WU per token for the models the stand-ins serve; others earn 0
 swap("async function wuPerToken(env, model) {", "async function wuPerToken(env, model) { if (globalThis.__perTok) return globalThis.__perTok[model] || 0;");
 globalThis.__perTok = { "qwen2.5-0.5b-q4km": 1e-5, "self-only-model-x": 1e-5 };
-swap("async function currentUser(env, request) {", "async function currentUser(env, request) { if (globalThis.__user) return { user_id: globalThis.__user, token: 't' };");
+// a request may say it comes from a server's own sign-in (scope "worker"): low priority is only for those (security review H1)
+swap("async function currentUser(env, request) {", "async function currentUser(env, request) { if (globalThis.__user) return { user_id: globalThis.__user, token: 't', scope: request.headers.get('x-test-scope') || '' };");
 swap("const GRID_QUEUE_S = 120,", "const GRID_QUEUE_S = globalThis.__queueS ?? 120,"); globalThis.__queueS = 3;   // the queue limit, short for the test
 swap("Math.random() < GRID_CHECK_P ? 2 : 1", "Math.random() < (globalThis.__checkP ?? GRID_CHECK_P) ? 2 : 1");
 src += "\nglobalThis.__g = { listGridJobs, ddb, M, U };";
@@ -53,7 +54,8 @@ async function program(user, device, models, liar = false, delay = 10, opt = {})
 const users = { rx: "gr" + randomBytes(4).toString("hex"), a: "ga" + randomBytes(4).toString("hex"), b: "gb" + randomBytes(4).toString("hex"), c: "gc" + randomBytes(4).toString("hex") };
 const dev = () => randomBytes(6).toString("hex");
 const job = (model = "qwen2.5-0.5b-q4km", extra = {}) => { globalThis.__user = users.rx; return W.fetch(new Request("https://planetcompute.ai/v1/jobs", { method: "POST",
-  headers: { "content-type": "application/json" }, body: JSON.stringify({ model, messages: [{ role: "user", content: "Name a planet " + Math.random() }], max_tokens: 40, ...extra }) }), env)
+  headers: { "content-type": "application/json", ...(extra.scope ? { "x-test-scope": extra.scope } : {}) },
+  body: JSON.stringify({ model, messages: [{ role: "user", content: "Name a planet " + Math.random() }], max_tokens: 40, ...extra, scope: undefined }) }), env)
   .then(async (r) => ({ s: r.status, j: await r.json() })); };
 const bal = async (u) => { const it = (await G.ddb(env, "GetItem", { TableName: PREFIX + "user-credits", Key: G.M({ user_id: u, sk: "BALANCE" }), ConsistentRead: true })).Item;
   const x = G.U(it) || {}; return { life: x.lifetime_contribution_uwu || 0, rec: x.lifetime_received_uwu || 0 }; };
@@ -105,14 +107,22 @@ const L = await G.listGridJobs(env, new URL("https://x/?day=" + new Date().toISO
 const mine = L.rows.filter((x) => x.receiver === users.rx);
 ok("8 the admin list (tab Grid jobs) has all 13 jobs: 9 answered (1 checked agree, 1 checked disagree), 4 failed, with reasons and times",
   mine.length === 13 && mine.filter((x) => x.ok).length === 9 && mine.some((x) => x.agree === "yes") && mine.some((x) => x.agree === "no") && mine.every((x) => x.total_ms >= 0), mine.map((x) => [x.ok, x.error, x.agree]));
-// priority: three test-traffic jobs ("priority": "low") queued first, then a normal one: the normal one runs next
+// priority: three test-traffic jobs ("priority": "low", from a server's own sign-in) queued first, then a normal one:
+// the normal one runs next
 const R = await program(users.a, dev(), ["qwen2.5-0.5b-q4km"], false, 400);
-const lows = [0, 1, 2].map((i) => new Promise((res) => setTimeout(res, i * 10)).then(() => job(undefined, { priority: "low" })));
+const aLow0 = await bal(users.a);
+const lows = [0, 1, 2].map((i) => new Promise((res) => setTimeout(res, i * 10)).then(() => job(undefined, { priority: "low", scope: "worker" })));
 const high = new Promise((res) => setTimeout(res, 60)).then(() => job());
 const [l1, l2, l3, h1] = await Promise.all([...lows, high]);
 const lw = [l1, l2, l3].map((x) => x.j.grid && x.j.grid.wait_ms), hw = h1.j.grid && h1.j.grid.wait_ms;
 ok(`12 priority: the normal job, sent after three low-priority ones, waits less than the last two (normal ${hw} ms, low ${lw.join(", ")} ms)`,
   [l1, l2, l3, h1].every((x) => x.s === 200) && hw < lw[1] && hw < lw[2], { hw, lw });
+// security review H1: low priority from an ordinary sign-in is ignored (it counts as a normal job), and low jobs pay
+// the volunteer nothing (only the one normal job above was credited)
+const aLow1 = await bal(users.a);
+ok(`12b low-priority jobs earn the volunteer nothing (credited ${aLow1.life - aLow0.life} micro-WU = the one normal job's ${wu})`, aLow1.life - aLow0.life === wu, { aLow0, aLow1 });
+const fake = await job(undefined, { priority: "low" });
+ok("12c 'priority: low' from an ordinary sign-in is not test traffic: answered as a normal job and counted", fake.s === 200 && fake.j.grid && fake.j.grid.wu > 0, fake.j);
 await R.close();
 // activity: the grid holds the totals and details in memory until it writes them (every 10 minutes)
 globalThis.__user = users.rx;

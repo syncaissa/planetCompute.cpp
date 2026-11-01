@@ -98,6 +98,14 @@ def sign(sha256):
     return base64.b64encode(key.sign(f'planetCompute release|{sha256}'.encode())).decode()
 
 
+def sign2(sha256, build_time, key_name):
+    """Second signature (security review P3): also covers the build time and the platform, so the agents can refuse an
+    older signed build or one for another platform (a rollback by someone who controls the downloads)."""
+    from cryptography.hazmat.primitives.serialization import load_pem_private_key
+    key = load_pem_private_key(open(os.path.join(os.path.dirname(__file__), '..', '.ops', 'release_ed25519.key'), 'rb').read(), None)
+    return base64.b64encode(key.sign(f'planetCompute release v2|{sha256}|{int(build_time)}|{key_name}'.encode())).decode()
+
+
 def commit_build(sha):
     """(short commit, unix commit time): what the program built from that commit reports (client/build.rs uses
     git log %ct = the committer date), so the window can tell a newer build (plan_old_programs #1/#3)."""
@@ -113,7 +121,7 @@ def add(b2, latest, v, key, path, build=('', 0)):
     b2.put(f'client/{v}/{name}', data)
     sha = hashlib.sha256(data).hexdigest()
     latest['builds'][key] = {'file': name, 'sha256': sha, 'bytes': len(data), 'sig': sign(sha),
-                             **({'commit': build[0], 'build_time': build[1]} if build[1] else {})}
+                             **({'commit': build[0], 'build_time': build[1], 'sig2': sign2(sha, build[1], key)} if build[1] else {})}
     print(f'{key}: {name} ({len(data) / 1e6:.0f} MB)', flush=True)
 
 

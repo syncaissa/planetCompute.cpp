@@ -157,6 +157,8 @@ struct Res {
     dev: DevId,
     text: String,
     file: Vec<u8>,
+    /// Who made it (account:device from the broker): a check copy never comes from the same owner (security review P1).
+    owner: String,
 }
 
 struct Item {
@@ -185,13 +187,22 @@ struct Task {
     /// It ran out of time and the prompt went to another computer, but this one may still deliver it (late answers
     /// count; the first answer wins and the other computer is told to stop).
     late: bool,
+    /// The account:device it was given to (from the broker, which knows the device's sign-in): after a reconnect only
+    /// the same owner may take it back or answer it (security review P1).
+    owner: String,
 }
 
 impl Task {
-    fn new(n: usize, dev: DevId, copy: u8, now: u64) -> Task {
-        Task { n, dev, copy, watch: Watch::new(now), orphan: None, late: false }
+    fn new(n: usize, dev: DevId, copy: u8, now: u64, owner: String) -> Task {
+        Task { n, dev, copy, watch: Watch::new(now), orphan: None, late: false, owner }
     }
 }
+
+/// After the hub (re)starts, devices may say what they were already making for this many ms; later, a prompt is
+/// answered only by the device it was given to (security review P1).
+const ADOPT_GRACE_MS: u64 = 5 * 60 * 1000;
+/// Answer parts held at once for all tasks, bytes (security review P1: a device cannot fill the hub's memory).
+const GOT_MAX_BYTES: usize = 256 << 20;
 
 pub struct PromptRun {
     pub id: String,
@@ -203,6 +214,10 @@ pub struct PromptRun {
     next: u64,
     got: HashMap<u64, (Value, Vec<Option<Vec<u8>>>)>,
     lonely_since: Option<u64>,
+    /// account:device of each connected device, from the broker's hello
+    owners: HashMap<DevId, String>,
+    /// when this run first saw the clock (the start of the adopt grace)
+    started: Option<u64>,
 }
 
 impl PromptRun {
@@ -240,7 +255,7 @@ impl PromptRun {
         for n in done {
             if let Some(it) = items.get_mut(n as usize) {
                 // done before a restart (its result is in the room's log already): nothing more to do for it
-                it.main = Some(Res { dev: 0, text: String::new(), file: vec![] });
+                it.main = Some(Res { dev: 0, text: String::new(), file: vec![], owner: String::new() });
                 it.chk_done = true;
             }
         }
@@ -254,11 +269,25 @@ impl PromptRun {
             next: 1,
             got: HashMap::new(),
             lonely_since: None,
+            owners: HashMap::new(),
+            started: None,
         })
     }
 
     pub fn total(&self) -> usize {
         self.items.len()
+    }
+    /// The broker's account:device for this connection (empty from an old broker: the connection is its own owner).
+    pub fn set_owner(&mut self, dev: DevId, owner: &str) {
+        if !owner.is_empty() {
+            self.owners.insert(dev, owner.to_string());
+        }
+    }
+    fn owner(&self, dev: DevId) -> String {
+        self.owners.get(&dev).cloned().unwrap_or_else(|| format!("dev:{dev}"))
+    }
+    fn main_owner(&self, n: usize) -> Option<String> {
+        self.items[n].main.as_ref().map(|r| r.owner.clone()).or_else(|| self.tasks.values().find(|t| t.n == n && t.copy == 0).map(|t| t.owner.clone()))
     }
     pub fn done(&self) -> usize {
         self.items.iter().filter(|i| i.main.is_some() || i.failed).count()
@@ -315,7 +344,8 @@ impl PromptRun {
             if pick.is_none() {
                 for n in 0..self.items.len() {
                     let it = &self.items[n];
-                    if it.check && !it.chk_done && !it.failed && it.chk.is_none() && it.chk_fails < CHECK_TRIES && !self.out(n, 1) && self.main_dev(n).is_some_and(|d| d != dev && d != 0) {
+                    if it.check && !it.chk_done && !it.failed && it.chk.is_none() && it.chk_fails < CHECK_TRIES && !self.out(n, 1) && self.main_dev(n).is_some_and(|d| d != dev && d != 0)
+                        && self.main_owner(n).is_none_or(|o| o != self.owner(dev)) {
                         pick = Some((n, 1));
                         break;
                     }
@@ -329,7 +359,8 @@ impl PromptRun {
             let seed = params["seed"].as_i64().unwrap_or(0) + n as i64;
             params["seed"] = json!(seed);
             let meta = json!({"task_id": tid, "job": self.id, "n": n, "copy": copy, "task": self.task, "model": self.model, "prompt": self.items[n].prompt, "params": params});
-            self.tasks.insert(tid, Task::new(n, dev, copy, now));
+            let owner = self.owner(dev);
+            self.tasks.insert(tid, Task::new(n, dev, copy, now, owner));
             if copy == 0 {
                 self.items[n].tried.push(dev);
                 self.items[n].waiting = None;
@@ -351,30 +382,38 @@ impl PromptRun {
 
     /// A device (re)connected and says what it is still making ([(job, n, copy)]): those prompts stay its own.
     pub fn adopt(&mut self, now: u64, dev: DevId, busy: &[(String, usize, u8)]) {
+        let started = *self.started.get_or_insert(now);
+        let me = self.owner(dev);
         for (job, n, copy) in busy {
             if *job != self.id || *n >= self.items.len() || *copy > 1 {
                 continue;
             }
-            // the task of the connection that dropped (two may be out for one prompt when one ran late)
-            let mine = self.tasks.iter().filter(|(_, t)| t.n == *n && t.copy == *copy).min_by_key(|(_, t)| t.orphan.is_none()).map(|(k, _)| *k);
+            // the task of the connection that dropped (two may be out for one prompt when one ran late): only the same
+            // owner (account and device) takes it back, never another computer (security review P1)
+            let mine = self.tasks.iter().filter(|(_, t)| t.n == *n && t.copy == *copy && t.owner == me && (t.orphan.is_some() || t.dev == dev))
+                .min_by_key(|(_, t)| t.orphan.is_none()).map(|(k, _)| *k);
             if let Some(k) = mine {
                 let t = self.tasks.get_mut(&k).unwrap();
                 t.dev = dev;
                 t.orphan = None;
                 continue;
             }
+            // a prompt this hub does not know as given (the hub restarted): accepted only just after the start, only if
+            // nobody has it, and a check copy never by the owner of the main answer
             let it = &self.items[*n];
             let needed = if *copy == 0 { it.main.is_none() && !it.failed } else { it.check && !it.chk_done && it.chk.is_none() };
-            if needed {
+            let other = self.tasks.values().any(|t| t.n == *n && t.copy == *copy);
+            let same_owner_check = *copy == 1 && self.main_owner(*n).is_some_and(|o| o == me);
+            if needed && !other && !same_owner_check && now.saturating_sub(started) < ADOPT_GRACE_MS {
                 let tid = self.next;
                 self.next += 1;
-                self.tasks.insert(tid, Task::new(*n, dev, *copy, now));
+                self.tasks.insert(tid, Task::new(*n, dev, *copy, now, me.clone()));
             }
         }
     }
 
     /// A TASK_RESULT message (one part of it).
-    pub fn on_result(&mut self, now: u64, dev: DevId, meta: &Value, bytes: &[u8]) -> Vec<Act> {
+    pub fn on_result(&mut self, _now: u64, dev: DevId, meta: &Value, bytes: &[u8]) -> Vec<Act> {
         let mut tid = meta["task_id"].as_u64().unwrap_or(0);
         // an answer from a device that reconnected (new device ID, maybe an older task number): found by its prompt
         if self.tasks.get(&tid).is_none_or(|t| t.dev != dev) {
@@ -382,23 +421,14 @@ impl PromptRun {
             if job != self.id || n >= self.items.len() {
                 return vec![];
             }
-            // its own task (under another number) or the task of a connection that dropped; never another computer's
-            let mine = self.tasks.iter().filter(|(_, t)| t.n == n && t.copy == copy && (t.dev == dev || t.orphan.is_some()))
+            // its own task (under another number) or the task of its own connection that dropped (same owner: account
+            // and device); never another computer's, and never a prompt nobody gave it (security review P1)
+            let me = self.owner(dev);
+            let mine = self.tasks.iter().filter(|(_, t)| t.n == n && t.copy == copy && (t.dev == dev || (t.orphan.is_some() && t.owner == me)))
                 .min_by_key(|(_, t)| t.dev != dev).map(|(k, _)| *k);
             match mine {
                 Some(k) => tid = k,
-                None => {
-                    let it = &self.items[n];
-                    let needed = if copy == 0 { it.main.is_none() && !it.failed } else { it.check && !it.chk_done && it.chk.is_none() };
-                    // an error for a prompt another computer is making now changes nothing
-                    let other = self.tasks.values().any(|t| t.n == n && t.copy == copy);
-                    if !needed || (other && meta["ok"].as_bool() != Some(true)) {
-                        return vec![];
-                    }
-                    tid = self.next;
-                    self.next += 1;
-                    self.tasks.insert(tid, Task::new(n, dev, copy, now));
-                }
+                None => return vec![],
             }
             let t = self.tasks.get_mut(&tid).unwrap();
             if t.dev != dev {
@@ -410,6 +440,12 @@ impl PromptRun {
         let parts = meta["parts"].as_u64().unwrap_or(1).clamp(1, 64) as usize;
         let part = meta["part"].as_u64().unwrap_or(0) as usize;
         if part >= parts {
+            return vec![];
+        }
+        // all answer parts held at once stay under GOT_MAX_BYTES (security review P1)
+        let held: usize = self.got.values().map(|(_, ps)| ps.iter().flatten().map(|p| p.len()).sum::<usize>()).sum();
+        if held + bytes.len() > GOT_MAX_BYTES {
+            self.got.remove(&tid);
             return vec![];
         }
         let e = self.got.entry(tid).or_insert_with(|| (meta.clone(), vec![None; parts]));
@@ -491,7 +527,7 @@ impl PromptRun {
                     acts.push(Act::File(f));
                 }
             }
-            let r = Res { dev: t.dev, text, file };
+            let r = Res { dev: t.dev, text, file, owner: t.owner.clone() };
             if copy == 0 {
                 it.main = Some(r);
             } else {
@@ -758,9 +794,17 @@ mod tests {
     #[test]
     fn a_device_that_reconnects_keeps_its_prompt_and_delivers_it() {
         let mut r = PromptRun::new(&job(2, 0)).unwrap();
+        // the broker names each connection's account and device: device 1 and its later connection 9 are one computer
+        r.set_owner(1, "u1:d1");
+        r.set_owner(9, "u1:d1");
+        r.set_owner(2, "u2:d2");
+        r.set_owner(5, "u3:d3");
         let (d, m) = tasks(&r.assign(0, &[1])).pop().unwrap();
         assert_eq!(d, 1);
         r.on_gone(100, 1); // a site deploy: every connection drops
+        // another computer cannot answer the dropped prompt (security review P1)
+        let stranger = r.on_result(150, 5, &json!({"task_id": m["task_id"], "job": r.id, "n": m["n"], "copy": 0, "ok": true, "ms": 5, "text": "fake", "part": 0, "parts": 1}), &[]);
+        assert!(stranger.is_empty(), "a stranger's answer for another computer's prompt is dropped");
         // device 1 comes back as device 9, still making prompt n; device 2 is idle
         r.adopt(200, 9, &[(r.id.clone(), m["n"].as_u64().unwrap() as usize, 0)]);
         let other = tasks(&r.assign(300, &[2]));
@@ -768,10 +812,21 @@ mod tests {
         // its answer arrives on the new connection with the OLD task number: accepted for the prompt
         let acts = r.on_result(0, 9, &json!({"task_id": m["task_id"], "job": r.id, "n": m["n"], "copy": 0, "ok": true, "ms": 5, "text": "late", "part": 0, "parts": 1}), &[]);
         assert!(acts.iter().any(|a| matches!(a, Act::Room(v) if v["t"] == "tresult" && v["ok"] == true && v["dev"] == 9)));
-        // an answer for a prompt of an unknown task number but known job / n (hub restarted) is accepted too
+        // hub restarted: an answer for a prompt nobody was given is dropped, unless the device said in its hello that it
+        // was making it (adopt, just after the start); then it is accepted (security review P1)
         let mut r2 = PromptRun::new(&job(1, 0)).unwrap();
+        let none = r2.on_result(0, 4, &json!({"task_id": 77, "job": r2.id, "n": 0, "copy": 0, "ok": true, "ms": 5, "text": "y", "part": 0, "parts": 1}), &[]);
+        assert!(none.is_empty() && !r2.finished(), "an answer nobody asked for is dropped");
+        r2.set_owner(4, "u4:d4");
+        r2.adopt(0, 4, &[(r2.id.clone(), 0, 0)]);
         let acts = r2.on_result(0, 4, &json!({"task_id": 77, "job": r2.id, "n": 0, "copy": 0, "ok": true, "ms": 5, "text": "y", "part": 0, "parts": 1}), &[]);
         assert!(acts.iter().any(|a| matches!(a, Act::Room(v) if v["t"] == "tresult" && v["ok"] == true)) && r2.finished());
+        // after the grace a claim of an unknown prompt is not taken
+        let mut r3 = PromptRun::new(&job(1, 0)).unwrap();
+        r3.adopt(0, 6, &[]);
+        r3.adopt(ADOPT_GRACE_MS + 1, 7, &[(r3.id.clone(), 0, 0)]);
+        let late = r3.on_result(ADOPT_GRACE_MS + 2, 7, &json!({"task_id": 1, "job": r3.id, "n": 0, "copy": 0, "ok": true, "ms": 5, "text": "z", "part": 0, "parts": 1}), &[]);
+        assert!(late.is_empty(), "no adopting unknown prompts after the grace");
     }
 
     #[test]
@@ -787,9 +842,9 @@ mod tests {
             w.finish().unwrap();
             out
         };
-        let a = Res { dev: 1, text: String::new(), file: png(0) };
-        assert_eq!(compare("image", &a, &Res { dev: 2, text: String::new(), file: png(3) }).0, true);
-        assert_eq!(compare("image", &a, &Res { dev: 2, text: String::new(), file: png(60) }).0, false);
+        let a = Res { dev: 1, text: String::new(), file: png(0), owner: String::new() };
+        assert_eq!(compare("image", &a, &Res { dev: 2, text: String::new(), file: png(3), owner: String::new() }).0, true);
+        assert_eq!(compare("image", &a, &Res { dev: 2, text: String::new(), file: png(60), owner: String::new() }).0, false);
         // a 2 MB result arrives in 3 parts and is stored for the room in 3 parts
         let mut j = job(1, 0);
         j["task"] = json!("image");

@@ -375,8 +375,13 @@ async function sendCodeEmail(env, to, code, purpose) {
 const authSecret = (env) => env.SESSION_SECRET || env.AUTH_SECRET;
 const codeHash = (env, purpose, email, code) => sha256hex(`${authSecret(env)}|code|${purpose}|${email}|${code}`);
 
+// Security review L3: wrong codes per address over a day; at OTP_FAIL_LOCK no new codes for that address until it passes
+const OTP_FAIL_LOCK = 15;   // per address per UTC day
 async function issueCode(env, purpose, email) {
   const pk = `OTP#${purpose}#${email}`, t = now();
+  const fails = await getItem(env, `OTPFAIL#${email}#${Math.floor(t / 86400)}`, "OTPFAIL");   // today's (UTC) wrong codes
+  if (fails && Number(fails.n || 0) >= OTP_FAIL_LOCK)
+    return { ok: false, status: 429, error: "Too many wrong codes for this address today. Please try again tomorrow." };
   const prev = await getItem(env, pk, "OTP");
   if (prev && t - prev.issued_at < CODE_RESEND_S) return { ok: false, status: 429, error: "Please wait a few seconds before asking for another code." };
   const inWindow = prev && t - prev.window_start < 3600;
@@ -415,7 +420,14 @@ async function checkCode(env, purpose, email, code) {
   const otp = await getItem(env, pk, "OTP");
   if (!otp || !otp.code_hash) return "That code has expired. Ask for a new one.";
   const h = /^\d{6}$/.test(String(code || "")) ? await codeHash(env, purpose, email, code) : "";
-  if (h !== otp.code_hash) return "That code is not right. Check the email and try again.";
+  if (h !== otp.code_hash) {
+    try {
+      await ddb(env, "UpdateItem", { TableName: tableName(env), Key: M({ pk: `OTPFAIL#${email}#${Math.floor(t / 86400)}`, sk: "OTPFAIL" }),
+        UpdateExpression: "ADD n :one SET #ttl = :x", ExpressionAttributeNames: { "#ttl": "ttl" },
+        ExpressionAttributeValues: M({ ":one": 1, ":x": t + 2 * 86400 }) });
+    } catch (e) { console.log("otp fail count", e && e.message); }
+    return "That code is not right. Check the email and try again.";
+  }
   try {                                                  // single use: remove the hash (only if it is still this one)
     await ddb(env, "UpdateItem", { TableName: tableName(env), Key: M({ pk, sk: "OTP" }), UpdateExpression: "REMOVE code_hash SET expires_at = :t",
       ConditionExpression: "code_hash = :h", ExpressionAttributeValues: M({ ":t": t, ":h": h }) });
@@ -481,7 +493,9 @@ async function createUser(env, email) {
 
 const sessionHash = (env, token) => sha256hex(`${authSecret(env)}|session|${token}`);
 // scope "worker" (security review W5): a sign-in for a server's program copies or test traffic, which can only do what
-// they need (WORKER_PATHS): never the admin page, wallet address, transfers, uploads or device pages.
+// they need (WORKER_PATHS): never the admin page, wallet address, transfers or device pages. (Handled before that check,
+// on purpose: the program's own routes a server copy uses, /api/uploads, /api/media/made, /api/tunnel/connect,
+// /api/sherpa/device, /api/pool/chat: the same account's own features on that server; security review L4.)
 async function createSession(env, userId, scope = "", ttlS = SESSION_TTL_S, request = null) {
   const token = b64url(randomBytes(32)), t = now(), ua = request ? request.headers.get("user-agent") || "" : "";
   await ddb(env, "PutItem", { TableName: tableName(env), Item: M({
@@ -1512,6 +1526,14 @@ async function handleWallet(env, me, path, method, body) {
         UpdateExpression: "SET address = :a, kind = if_not_exists(kind, :k), #at = if_not_exists(#at, :t)", ExpressionAttributeNames: { "#at": "at" },
         ExpressionAttributeValues: { ":a": S_(cur.wallet), ":k": S_("linked"), ":t": S_(iso()) } });
     await ddb(env, "DeleteItem", { TableName: tableName(env), Key: M({ pk: `USER#${me.user_id}`, sk: "WLINK" }) });
+    const lp = (await getItem(env, `USER#${me.user_id}`, "PROFILE")) || {};
+    if (lp.primary_email) {            // tell the owner: linking a wallet is what an intruder would do (security review H3)
+      const lt = iso().replace("T", " ").slice(0, 19);
+      try { await sendEmail(env, { to: [lp.primary_email], subject: "A wallet was linked to your PlanetCompute account",
+        text: `A Solana wallet was linked to your PlanetCompute account on ${lt} UTC:\n${pend.wallet}\n\nCoins can be sent to it 24 hours after linking. If you did not do this, sign out of every session (Account, Where you are signed in) and remove the wallet now.`,
+        html: `<p>A Solana wallet was linked to your PlanetCompute account on ${lt} UTC:</p><p><code>${escHtml(pend.wallet)}</code></p><p>Coins can be sent to it 24 hours after linking. If you did not do this, sign out of every session (Account, Where you are signed in) and remove the wallet now.</p>` }); }
+      catch (e) { console.log("wallet link email", e && e.message); }
+    }
     return json({ ok: true, wallet: pend.wallet });
   }
   if (path === "/api/wallet/list" && method === "GET") {         // my wallets, with what each holds on chain
@@ -1598,6 +1620,14 @@ async function handleWallet(env, me, path, method, body) {
     } else if (mine) b.wallet = mine;                                  // the account's own wallet address first
     if (!b.wallet) return json({ error: "Add your Solana wallet address first (Profile, or My Balance)." }, 409);
     if (walletHoldUntil(prof)) return json({ error: holdMsg(walletHoldUntil(prof)), hold_until: walletHoldUntil(prof) }, 409);   // W6
+    if (b.wallet !== mine) {           // a linked wallet: coins go there 24 h after it was linked (security review H3: a stolen sign-in cannot link and drain)
+      const lw = (await walletList(env, me.user_id)).wallets.find((x) => x.address === b.wallet);
+      const lt = lw && lw.at ? Date.parse(lw.at) / 1000 : 0;
+      if (lt && now() < lt + WALLET_HOLD_S) {
+        const until = new Date((lt + WALLET_HOLD_S) * 1000).toISOString();
+        return json({ error: `This wallet was linked recently. To keep your coins safe, transfers to a newly linked wallet start 24 hours after linking: from ${until.replace("T", " ").slice(0, 16)} UTC.`, hold_until: until }, 409);
+      }
+    }
     const bo = bonusOf(env, b, await rulesCached(env));
     const want = body.amount == null || String(body.amount).trim() === "" ? bo.available : toBase(env, body.amount);
     if (want === null || want <= 0n) return json({ error: bo.available > 0n ? "Enter the amount to send." : "No bonus to send yet." }, 400);
@@ -2337,7 +2367,7 @@ async function handleJobs(request, env) {
   if (!msgs.length || msgs.reduce((a, x) => a + x.content.length, 0) > GRID_MAX_CHARS) return json({ error: { message: `Give messages (at most ${GRID_MAX_CHARS} characters in all).` } }, 400);
   const job = { id: hex(randomBytes(8)), model, messages: msgs, max_tokens: Math.max(1, Math.min(GRID_MAX_TOKENS, Number(b.max_tokens) || 256)),
     seed: randU32() % 2147483647, receiver: me.user_id, at: Date.now(),
-    low: b.priority === "low" || /^hungrywolf\//i.test(request.headers.get("user-agent") || "") };   // test traffic: behind everyone else
+    low: b.priority === "low" && me.scope === "worker" };   // test traffic (operator servers only): behind everyone else, not counted, not paid
   let counted = false;
   if (!job.low) {                                          // the free daily limit (test traffic is not counted)
     const limit = poolLimit(env);
@@ -2640,7 +2670,8 @@ export class CapacityPolice {
     const { pt, ct } = capped(a), perTok = await wuPerToken(this.env, job.model);
     const uwu = Math.floor((pt + ct) * perTok * 1e6), t = iso(), rule = ruleAt(await rulesCached(this.env), t);
     const b = rule ? Math.round((uwu / 1e6) * Number(rule.credit_per_wu || 0) * 1e15) : 0;
-    const pay = (checked && !agree ? [] : answers).filter((x) => x.user && x.user !== job.receiver);   // disagreement: nobody; own job: no credit
+    // disagreement: nobody; own job: no credit; test traffic (low): no credit (security review H1: free low jobs must not mint credit)
+    const pay = job.low ? [] : (checked && !agree ? [] : answers).filter((x) => x.user && x.user !== job.receiver);
     try {
       await Promise.all([...pay.map((x) => addCredit(this.env, x.user, uwu, t, b)),
         uwu > 0 && pay.length ? ddb(this.env, "UpdateItem", { TableName: creditsTable(this.env), Key: { user_id: S_(job.receiver), sk: S_("BALANCE") },
@@ -2978,6 +3009,12 @@ export class CapacityPolice {
     const who = (await this.state.storage.get("who")) || {};
     if (who.user && who.device && !this.state.getWebSockets().filter((w) => w !== ws && w.readyState === 1).length) {
       try { await flushDevice(this.env, who.user, who.device); } catch (e) { console.log("flush on close", e && e.message); }
+      // the last capacity socket closed: not verified until the next live test (security review H2)
+      try {
+        await ddb(this.env, "UpdateItem", { TableName: tableName(this.env), Key: M({ pk: `USER#${who.user}`, sk: `DEVICE#${who.device}` }),
+          UpdateExpression: "SET police_verified = :f", ConditionExpression: "attribute_exists(pk)", ExpressionAttributeValues: M({ ":f": false }) });
+        await this.state.storage.delete("recorded");
+      } catch (e) { if (!(e && e.type === "ConditionalCheckFailedException")) console.log("unverify on close", e && e.message); }
     }
     if (who.net && !this.state.getWebSockets().filter((w) => w !== ws && w.readyState === 1).length) {
       try { await this.groupStub(who.net).fetch("https://police.internal/leave", { method: "POST", body: JSON.stringify({ name: `police:${who.user}:${who.device}` }) }); } catch (e) {}
@@ -3342,7 +3379,10 @@ async function heartbeat(env, me, b, request, retried = false, via = null) {
   // server's hand-in window. Never more than the verified capacity x the time that really passed.
   const elapsed = Math.min(gap, via ? via.cap : old.last_via === "server" ? 2 * HB_INGEST_S : 2 * BEAT_S);
   const idleElapsed = Math.min(gap, 2 * IDLE_BEAT_S);         // idle time: an idle device reports less often
-  const verified = !!old.police_verified, rate = verified ? (old.verified_cpu_wu_s || 0) + (old.verified_gpu_wu_s || 0) : 0;
+  // verified only while the capacity check is live: it re-records at least every 10 minutes while connected (security
+  // review H2: a device verified once and disconnected must not keep earning on reports alone)
+  const policeFresh = Date.now() - (Date.parse(old.police_at || 0) || 0) < 15 * 60000;
+  const verified = !!old.police_verified && policeFresh, rate = verified ? (old.verified_cpu_wu_s || 0) + (old.verified_gpu_wu_s || 0) : 0;
   // credited only by checked work (audits), not by this report. The website decides (plan_old_programs #4): every
   // program build with an id carries the audit code, so it is audited even if its hello left out "leases"
   const audited = env.AUDIT_ONLY === "1" || !!old.audit_mode || (dev.host === "app" && dev.build_time > 0);
@@ -3573,7 +3613,11 @@ async function handleApi(request, env, url) {
       if (!email) return json({ error: "Enter a valid email address." }, 400);
       const lim = await authLimit(env, request, "start");
       if (lim) return lim;
-      if (!(await userForEmail(env, email))) { const no = await newAccountCheck(env, request, email, body); if (no) return no; }
+      if (!(await userForEmail(env, email))) {
+        const no = await newAccountCheck(env, request, email, body); if (no) return no;
+        // security review M3: verify creates an account only for an address whose new-account checks passed here
+        await ddb(env, "PutItem", { TableName: tableName(env), Item: M({ pk: `NEWOK#${email}`, sk: "NEWOK", at: now(), ttl: now() + 3600 }) });
+      }
       const r = await issueCode(env, "signin", email);
       return r.ok ? json({ ok: true }) : json({ error: r.error }, r.status);
     }
@@ -3588,7 +3632,10 @@ async function handleApi(request, env, url) {
       if (!userId) {
         const other = await getItem(env, `CANON#${canonEmail(email)}`, "CANON");
         if (other) return json({ error: `An account already exists for this address (${maskEmail(other.email || "")}): please sign in with that address.` }, 409);
+        const ok = await getItem(env, `NEWOK#${email}`, "NEWOK");
+        if (!ok || now() - Number(ok.at || 0) > 3600) return json({ error: "Please start signing up again: ask for a new code." }, 409);
         userId = await createUser(env, email); created = true;
+        await ddb(env, "DeleteItem", { TableName: tableName(env), Key: M({ pk: `NEWOK#${email}`, sk: "NEWOK" }) }).catch(() => {});
       }
       await ddb(env, "UpdateItem", { TableName: tableName(env), Key: M({ pk: `USER#${userId}`, sk: "PROFILE" }),
         UpdateExpression: "SET last_login_at = :t", ExpressionAttributeValues: M({ ":t": iso() }) });
@@ -3736,6 +3783,9 @@ async function handleApi(request, env, url) {
         if (mine.emails.length >= MAX_EMAILS) return json({ error: `An account can have up to ${MAX_EMAILS} email addresses.` }, 409);
         // The code is sent even when another account uses the address: only after the code proves the
         // address is theirs does verify say it belongs to another account.
+        // security review M2: per IP, network and account, so an account cannot make the site email strangers in bulk
+        const lim = await authLimit(env, request, "addemail", false, ["user:" + me.user_id]);
+        if (lim) return lim;
         const r = await issueCode(env, `add:${me.user_id}`, email);   // the code belongs to this account's request
         return r.ok ? json({ ok: true }) : json({ error: r.error }, r.status);
       }
@@ -11677,7 +11727,7 @@ async function mediaView(request, env, url) {
   if (request.method !== "GET" || !/^[A-Za-z0-9]{10}$/.test(tok)) return new Response(null, { status: 400, headers: h });
   const c = viewsCfg(env);
   if (c.active && env.MEDIA_VIEWS && !VIEW_BOTS.test(request.headers.get("user-agent") || "")) {
-    const s = Math.min(1e6, Math.max(1, parseInt(url.searchParams.get("s") || "1", 10) || 1));
+    const s = c.sample || 1;   // security review L2: the configured sample rate, never a number from the request
     try { env.MEDIA_VIEWS.writeDataPoint({ indexes: [tok], doubles: [s] }); } catch (e) { /* counting is best effort */ }
   }
   return new Response(null, { status: 204, headers: h });
@@ -13249,17 +13299,25 @@ async function emailBugReporter(env, me, adminEmail, body) {
 // Sign-in limits per IP address and per network (/24 or /64), and for the whole site (security review W4: codes asked
 // for many addresses, or guessed in bulk, from one place). [seconds, at most].
 const AUTH_LIMITS = { start: [[600, 10], [86400, 40]], verify: [[600, 20], [86400, 80]],
-  save: [[60, 30], [86400, 300]], register: [[60, 30], [86400, 1500]], newacct: [[86400, 3]] };   // per IP (and per network)
-const AUTH_GLOBAL = { start: [[600, 3000]], verify: [[600, 6000]], save: [[600, 6000]], register: [[600, 20000]], newacct: [[3600, 500]] };
-async function authLimit(env, request, what, ipOnly) {
+  save: [[60, 30], [86400, 300]], register: [[60, 30], [86400, 1500]], newacct: [[86400, 3]],
+  addemail: [[3600, 5], [86400, 10]] };   // per IP (and per network); addemail also per account
+// Security review M4: the site-wide sign-in counters were low enough for a few hundred networks to block sign-in for
+// everyone; codes are already limited per address (CODE_MAX_PER_HOUR, CODE_MAX_ATTEMPTS, OTP_FAIL_LOCK), so the
+// site-wide counter is now only a ceiling against a flood.
+const AUTH_GLOBAL = { start: [[600, 60000]], verify: [[600, 120000]], save: [[600, 6000]], register: [[600, 20000]], newacct: [[3600, 500]],
+  addemail: [[600, 3000]] };
+async function authLimit(env, request, what, ipOnly, extraKeys) {
   if (!env.CONTACT) return null;
   const ip = request.headers.get("cf-connecting-ip") || "none";
   try {
     const g = await env.CONTACT.get(env.CONTACT.idFromName("auth")).fetch("https://contact.internal/take", { method: "POST",
-      body: JSON.stringify({ kind: "auth", what, keys: ipOnly ? ["ip:" + ip] : ["ip:" + ip, "net:" + contactNetKey(ip)] }) });
+      body: JSON.stringify({ kind: "auth", what, keys: [...(ipOnly ? ["ip:" + ip] : ["ip:" + ip, "net:" + contactNetKey(ip)]), ...(extraKeys || [])] }) });
     const r = await g.json();
     return r.ok ? null : json({ error: r.error }, 429);
-  } catch (e) { return null; }
+  } catch (e) {
+    // security review M4: checking a code fails closed when the limiter cannot be reached; asking for one stays open
+    return what === "verify" ? json({ error: "Sign-in is busy just now. Please try again in a minute." }, 503) : null;
+  }
 }
 const AUTH_WORDS = {
   start: ["Too many sign-ins are happening right now. Please try again in a few minutes.", "Too many sign-in attempts from your network. Please wait a while and try again."],
@@ -13267,6 +13325,7 @@ const AUTH_WORDS = {
   save: ["Too many saves to the cloud right now. Please try again in a few minutes.", "Too many saves to the cloud from your network. Please wait a while and try again."],
   register: ["Too busy right now: the program tries again shortly.", "Too many pictures from your network right now: the program tries again shortly."],
   newacct: ["Too many new accounts right now. Please try again later.", "Too many new accounts from your network today. Please try again tomorrow, or sign in with an existing account."],
+  addemail: ["Too many address checks right now. Please try again later.", "Too many address checks from your account or network today. Please try again tomorrow."],
 };
 export class ContactGuard {
   constructor(state) { this.state = state; }
@@ -13382,6 +13441,17 @@ async function handleDevice(request, env, url) {
   const who = await currentUser(env, request);
   if (!who || who.scope === "worker") return new Response(TUNNEL_SIGN_IN, { status: 401, headers: TUNNEL_PAGE_HEADERS });
   if (request.method !== "GET" && request.method !== "HEAD") return json({ error: "This page moved to its own address: reload the page." }, 409);
+  // Security review M1: a ticket is issued without asking only when the person came from planetcompute.ai itself or
+  // typed/pasted the address. Arriving from anywhere else (e.g. a page on the device host opening another computer's
+  // link) gets a page with a link to click: this site cannot be framed by the device host, so a page there cannot click it.
+  const sfs = request.headers.get("sec-fetch-site") || "";
+  if (sfs && sfs !== "same-origin" && sfs !== "none") {
+    const back = `/device/${m[1]}${escHtml(m[2])}${escHtml(url.search)}`;
+    return new Response(simplePage("Open your computer · PlanetCompute", "Open your computer?",
+      `<p>This link opens the planetCompute program on your computer <code>${m[1]}</code> through PlanetCompute. Open it only if you meant to.</p>
+<div class="row"><a class="btn btn-gold" href="${back}" target="_top">Open my computer</a><a class="btn btn-ghost" href="/" target="_top">Back to PlanetCompute</a></div>`),
+      { status: 200, headers: TUNNEL_PAGE_HEADERS });
+  }
   const q = new URLSearchParams(url.search); q.set("pcticket", await devSign(env, "ticket", who.user_id, m[1], now() + DEV_TICKET_S));
   return new Response(null, { status: 302, headers: { location: `https://${deviceHost(env)}/device/${m[1]}${m[2]}?${q}`, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
 }
@@ -13801,7 +13871,10 @@ export class SherpaBroker {
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
-  helloOf(a) { return { t: "hello", dev: a.dev, cache: a.cache, cores: a.cores, name: a.name || "", models: a.models || [], busy: a.busy || [] }; }
+  // owner: the device's account and device ID from its sign-in (not from the device): the hub binds prompt tasks to it,
+  // so only the same computer can take a dropped task back (security review P1)
+  helloOf(a) { return { t: "hello", dev: a.dev, cache: a.cache, cores: a.cores, name: a.name || "", models: a.models || [], busy: a.busy || [],
+    owner: `${a.user || ""}:${a.device || ""}` }; }
   async webSocketMessage(ws, message) {
     const a = ws.deserializeAttachment() || {};
     if (a.role === "hub") return this.fromHub(ws, a, message);

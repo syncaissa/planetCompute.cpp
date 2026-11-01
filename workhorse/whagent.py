@@ -193,7 +193,11 @@ class Copy:
         if os.path.exists(lp) and os.path.getsize(lp) > 50 * 2**20:       # keep the last 5 MB of a big log
             data = open(lp, "rb").read()[-5 * 2**20:]
             open(lp, "wb").write(data)
-        out = open(lp, "ab")
+        out = os.fdopen(os.open(lp, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600), "ab")   # security review P4: owner only
+        try:
+            os.chmod(lp, 0o600)                                # logs made before this change too
+        except OSError:
+            pass
         out.write(f"== start {iso()} ({why}) {('SherpaHub + SupplySimulation, cores ' + str(cores) + ' cap ' + str(cap)) if role == 'sherpahub' and supply else 'SherpaHub' if role == 'sherpahub' else f'cores {cores} cap {cap}'}\n".encode())
         out.flush()
         env = {k: v for k, v in os.environ.items() if not k.startswith("XDG_")}
@@ -404,12 +408,30 @@ class Agent:
         try:
             lat = json.loads(urllib.request.urlopen(urllib.request.Request(SITE + "/download/latest.json", headers={"user-agent": "whagent/1"}), timeout=30).read())
             b = lat["builds"]["linux-server"]
-            if not ed25519_verify(RELEASE_PUBKEY, f"planetCompute release|{b['sha256']}".encode(), base64.b64decode(b.get("sig") or "")):
+            # security review P3: the v2 signature also covers the build time and the platform; once a v2-signed build is
+            # installed (its build time is kept beside the program), only v2-signed builds that are not older are taken
+            bt = int(b.get("build_time") or 0)
+            try:
+                have_bt = int(open(BIN + ".build_time").read().strip() or 0)
+            except Exception:
+                have_bt = 0
+            if b.get("sig2"):
+                ok = ed25519_verify(RELEASE_PUBKEY, f"planetCompute release v2|{b['sha256']}|{bt}|linux-server".encode(), base64.b64decode(b.get("sig2") or ""))
+            else:
+                ok = not have_bt and ed25519_verify(RELEASE_PUBKEY, f"planetCompute release|{b['sha256']}".encode(), base64.b64decode(b.get("sig") or ""))
+            if not ok:
                 self.update_last = {"at": iso(), "result": "FAILED: the build is not signed by PlanetCompute's release key (nothing changed)"}
                 log("update refused: no valid release signature")
                 return
+            if have_bt and bt < have_bt:
+                self.update_last = {"at": iso(), "result": "FAILED: the offered build is older than the one installed (nothing changed)"}
+                log("update refused: older build", bt, "<", have_bt)
+                return
             have = hashlib.sha256(open(BIN, "rb").read()).hexdigest()
             if have == b["sha256"]:
+                if b.get("sig2") and bt and not have_bt:          # start the rollback protection on this build too (P3)
+                    with open(BIN + ".build_time", "w") as f:
+                        f.write(str(bt))
                 self.update_last = {"at": iso(), "result": "already the newest build", "commit": lat.get("commit", "")[:7]}
                 return
             tmp = BIN + ".new"
@@ -429,6 +451,9 @@ class Agent:
             for c in self.copies:
                 c.stop("update to the newest build")
             os.replace(tmp, BIN)
+            if b.get("sig2") and bt:
+                with open(BIN + ".build_time", "w") as f:
+                    f.write(str(bt))
             self.version = self.version_of_bin()
             self.update_last = {"at": iso(), "result": "updated", "commit": lat.get("commit", "")[:7], "sha256": b["sha256"][:16]}
             log("updated to", lat.get("commit", "")[:7])

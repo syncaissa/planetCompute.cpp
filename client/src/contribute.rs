@@ -449,7 +449,10 @@ async fn hb_config(st: &Local, token: &str) -> HbCfg {
         if r.status().is_success() {
             let v: Value = serde_json::from_slice(&r.bytes().await.unwrap_or_default()).unwrap_or_default();
             c.servers = v["servers"].as_array().cloned().unwrap_or_default().iter().filter_map(|x| x.as_str())
-                .filter(|u| u.starts_with("https://") && u.ends_with(".planetcompute.ai") && !u[8..].contains('/'))
+                .filter(|u| u.starts_with("https://") && u.ends_with(".planetcompute.ai") && !u[8..].contains('/')
+                    // security review P7: the real host must be ours (not https://evil.com?.planetcompute.ai)
+                    && reqwest::Url::parse(u).ok().is_some_and(|x| x.host_str().is_some_and(|h| h.ends_with(".planetcompute.ai"))
+                        && x.username().is_empty() && x.password().is_none() && x.query().is_none() && x.fragment().is_none() && x.port().is_none()))
                 .map(String::from).collect();
             c.token = v["token"].as_str().unwrap_or("").to_string();
             c.until = v["until"].as_u64().unwrap_or(0);

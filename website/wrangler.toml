@@ -39,4 +39,9 @@ new_sqlite_classes = ["SherpaBroker"]
 
 # hourly: heartbeat servers health check + "no server running" email to the admins (hbCron)
 [triggers]
-crons = ["17 * * * *"]
+crons = ["17 * * * *", "47 * * * *"]   # 17: heartbeat servers; 47: my.planetcompute.ai view totals + config.json
+
+# my.planetcompute.ai view counts: one data point per counted view, added up hourly (worker myCron); no database per view
+[[analytics_engine_datasets]]
+binding = "MEDIA_VIEWS"
+dataset = "pc_media_views"
