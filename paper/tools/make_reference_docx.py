@@ -88,24 +88,24 @@ styles = [
                ppr=JUST + '<w:spacing w:line="240" w:lineRule="exact"/><w:ind w:left="567" w:right="567" w:firstLine="284"/>',
                rp=rpr(10)),
     para_style("Keywords", "Keywords", ppr=JUST + '<w:spacing w:before="200" w:after="0"/>', rp=rpr(11)),
-    para_style("Bibliography", "Bibliography", ppr='<w:ind w:left="284" w:hanging="284"/><w:spacing w:before="0" w:after="120"/>', custom=False),
+    para_style("Bibliography", "Bibliography", ppr='<w:ind w:left="227" w:hanging="227"/><w:spacing w:before="0" w:after="30" w:line="216" w:lineRule="exact"/><w:jc w:val="left"/>', custom=False, rp=rpr(9)),
     para_style("Heading1", "heading 1", nxt="FirstParagraph", custom=False,
-               ppr='<w:keepNext/><w:keepLines/><w:spacing w:before="420" w:after="200"/><w:outlineLvl w:val="0"/>',
+               ppr='<w:keepNext/><w:keepLines/><w:spacing w:before="280" w:after="120"/><w:outlineLvl w:val="0"/>',
                rp=rpr(14.4, bold=True)),
     para_style("Heading2", "heading 2", nxt="FirstParagraph", custom=False,
-               ppr='<w:keepNext/><w:keepLines/><w:spacing w:before="300" w:after="140"/><w:outlineLvl w:val="1"/>',
+               ppr='<w:keepNext/><w:keepLines/><w:spacing w:before="200" w:after="80"/><w:outlineLvl w:val="1"/>',
                rp=rpr(12, bold=True)),
     para_style("Heading3", "heading 3", nxt="FirstParagraph", custom=False,
-               ppr='<w:keepNext/><w:keepLines/><w:spacing w:before="240" w:after="100"/><w:outlineLvl w:val="2"/>',
+               ppr='<w:keepNext/><w:keepLines/><w:spacing w:before="140" w:after="60"/><w:outlineLvl w:val="2"/>',
                rp=rpr(11, bold=True)),
     para_style("BlockText", "Block Text", "BodyText", custom=False, ppr='<w:ind w:left="567" w:right="567" w:firstLine="0"/>'),
     para_style("FootnoteText", "footnote text", custom=False, rp=rpr(9)),
-    para_style("Caption", "caption", custom=False, ppr=CENTER + '<w:spacing w:before="120" w:after="120"/>', rp=rpr(11)),
-    para_style("TableCaption", "Table Caption", "Caption", ppr='<w:keepNext/><w:spacing w:before="240" w:after="60"/>'),
+    para_style("Caption", "caption", custom=False, ppr=CENTER + '<w:spacing w:before="60" w:after="60" w:line="240" w:lineRule="exact"/>', rp=rpr(10)),
+    para_style("TableCaption", "Table Caption", "Caption", ppr='<w:keepNext/><w:spacing w:before="140" w:after="40" w:line="240" w:lineRule="exact"/>'),
     para_style("ImageCaption", "Image Caption", "Caption"),
-    para_style("Figure", "Figure", ppr=CENTER + '<w:spacing w:before="160" w:after="160" w:line="240" w:lineRule="auto"/>'),
+    para_style("Figure", "Figure", ppr=CENTER + '<w:spacing w:before="80" w:after="80" w:line="240" w:lineRule="auto"/>'),
     para_style("CaptionedFigure", "Captioned Figure", "Figure", ppr='<w:keepNext/>'),
-    para_style("Asset", "Asset", ppr=CENTER + '<w:keepLines/><w:spacing w:before="120" w:after="120" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/>'),
+    para_style("Asset", "Asset", ppr=CENTER + '<w:keepLines/><w:spacing w:before="60" w:after="60" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/>'),
     para_style("KeyInsightTitle", "Key Insight Title", nxt="KeyInsight",
                ppr=box_border + f'<w:shd w:val="clear" w:color="auto" w:fill="{BLUE}"/><w:keepNext/>'
                '<w:spacing w:before="240" w:after="0" w:line="300" w:lineRule="auto"/><w:ind w:left="170" w:right="170"/>',
@@ -127,8 +127,8 @@ styles = [
     char_style("BodyTextChar", "Body Text Char", ""),
     # booktabs: heavy top/bottom rule, light rule under the header row, no verticals.
     '<w:style w:type="table" w:default="1" w:styleId="Table"><w:name w:val="Table"/><w:qFormat/>'
-    '<w:pPr><w:spacing w:before="20" w:after="20"/><w:jc w:val="left"/></w:pPr>'
-    '<w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>'
+    '<w:pPr><w:spacing w:before="0" w:after="0" w:line="216" w:lineRule="exact"/><w:jc w:val="left"/></w:pPr>'
+    '<w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
     '<w:tblPr><w:jc w:val="center"/><w:tblBorders><w:top w:val="single" w:sz="8" w:space="0" w:color="000000"/>'
     '<w:bottom w:val="single" w:sz="8" w:space="0" w:color="000000"/></w:tblBorders>'
     '<w:tblCellMar><w:left w:w="85" w:type="dxa"/><w:right w:w="85" w:type="dxa"/></w:tblCellMar></w:tblPr>'

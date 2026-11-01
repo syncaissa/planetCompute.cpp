@@ -393,6 +393,26 @@ EMBED = {  # Word font name -> {style: file}. Word embeds only TrueType-outline 
     "CMU Typewriter Text": {"Regular": "cmu-typewriter-text-500-roman.ttf"},
 }
 
+def two_column_refs(doc):
+    """References in two columns, as in the PDF: the section ends at the "References" heading (one column), again at
+    the last reference (two columns, continuous), and the closing lines are one column again (continuous)."""
+    final = re.search(r"<w:sectPr>(.*?)</w:sectPr>\s*</w:body>", doc, re.S)
+    bib = [m for m in re.finditer(r'<w:p><w:pPr><w:pStyle w:val="Bibliography" />', doc)]
+    head = doc.rfind('<w:p><w:pPr><w:pStyle w:val="Heading1" />', 0, bib[0].start()) if bib and final else -1
+    if head < 0:
+        return doc
+    inner = final.group(1)
+    one = "<w:sectPr>" + inner + "</w:sectPr>"
+    cont = inner.replace("<w:pgSz", '<w:type w:val="continuous" /><w:pgSz', 1)
+    two = "<w:sectPr>" + cont + '<w:cols w:num="2" w:space="397" /></w:sectPr>'
+    tag = '<w:pStyle w:val="Bibliography" />'
+    last = bib[-1].start() + len('<w:p><w:pPr>') + len(tag)
+    doc = doc[:last] + two + doc[last:]
+    hp = head + len('<w:p><w:pPr><w:pStyle w:val="Heading1" />')
+    doc = doc[:hp] + one + doc[hp:]
+    return doc[:doc.rfind("<w:sectPr>")] + "<w:sectPr>" + cont + "</w:sectPr>" + doc[doc.rfind("</w:sectPr>") + len("</w:sectPr>"):]
+
+
 def embed_fonts(src, dst):
     """Embed the Latin Modern fonts (obfuscated per ECMA-376 Part 1, 17.8.1)."""
     zin = zipfile.ZipFile(src)
@@ -438,6 +458,7 @@ def embed_fonts(src, dst):
         else:
             settings = re.sub(r"(<w:zoom[^>]*/>)", r"\1<w:embedTrueTypeFonts/>", settings, count=1)
     files["word/settings.xml"] = settings.encode()
+    files["word/document.xml"] = two_column_refs(files["word/document.xml"].decode()).encode()
     with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as z:
         for n, d in files.items():
             z.writestr(n, d)
