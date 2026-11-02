@@ -7454,14 +7454,18 @@ ${WORKPACK_SRC}
     resendTimer = setInterval(function () { left -= 1; if (left <= 0) { clearInterval(resendTimer); b.disabled = false; b.textContent = "Resend code"; } else b.textContent = "Resend code (" + left + " s)"; }, 1000);
   }
   // a new account: the site asks for the Cloudflare Turnstile check first (need_turnstile); passing it sends again
-  var suToken = "", suWidget = null;
+  // Bug 2026-11-02: a Turnstile pass lasts 300 s and then renews itself; the callback used to call sendCode() every time,
+  // so an open tab emailed a new code every 5 minutes. Now: send by itself only ONCE after the site asked for the check
+  // (suWant), no automatic renewal (refresh-expired manual), and the box is removed once the code is sent.
+  var suToken = "", suWidget = null, suWant = false;
   function suCheck(sitekey) {
-    $("suCheck").hidden = false;
+    suWant = true; $("suCheck").hidden = false;
     if (suWidget !== null || !sitekey || !window.pcTurnstile) return;
     suWidget = false;
     window.pcTurnstile(function () {
       suWidget = window.turnstile.render("#suCheck", { sitekey: sitekey, theme: document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark",
-        callback: function (t) { suToken = t; sendCode(); }, "expired-callback": function () { suToken = ""; } });
+        callback: function (t) { suToken = t; if (suWant) { suWant = false; sendCode(); } }, "expired-callback": function () { suToken = ""; },
+        "refresh-expired": "manual" });
     });
   }
   function sendCode() {
@@ -7475,7 +7479,9 @@ ${WORKPACK_SRC}
         suToken = ""; say("msgEmail", r.data.error, "err"); suCheck(r.data.sitekey); return;
       }
       if (!r.ok) { say("msgEmail", r.data.error || "Could not send the code.", "err"); return; }
-      suToken = ""; $("suCheck").hidden = true;
+      suToken = ""; suWant = false; $("suCheck").hidden = true;
+      if (suWidget && window.turnstile) { try { window.turnstile.remove(suWidget); } catch (e) {} }
+      if (suWidget !== false) suWidget = null;
       pendingEmail = email; $("codeTo").textContent = email; $("authCode").value = ""; say("msgCode", "");
       view("vCode"); startResendTimer(); setTimeout(function () { $("authCode").focus(); }, 30);
     });

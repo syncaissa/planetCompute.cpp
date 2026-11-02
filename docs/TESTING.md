@@ -2280,10 +2280,23 @@ A test site of our own (PLANETCOMPUTE_SITE, test_sherpa_e2e.sh) has no sign-in, 
 real site only, as sherpa.rs already did. RunPod again: Rust 29/29, no settings file written; test_local_server.sh all
 pass except "image engine is in this build" (the image engine is added by CI, not on the pod); pod deleted.
 
+## 107. The "show you are a person" check does not send a code every 5 minutes (2026-11-02)
+
+User: "something keeps sending the otp email every 5 minutes" (first to one of the user's addresses, later to the
+address last used to sign in). Found: on the sign-in screen the Turnstile check's callback called sendCode(). A
+Turnstile pass lasts 300 s and then renews itself, calling the callback again, so a tab left open after signing in
+asked for a new code every 5 minutes (until the 10-a-day hold of test 102). The emails named the user's own browser
+(Chrome on Windows, own IP). Fixed (site ad28611a): the check sends by itself only once after the site asked for it
+(suWant), "refresh-expired": "manual" (no automatic renewal), and the box is removed once the code is sent.
+Steps: `node scripts/test_otp_turnstile_loop.mjs website/worker.js` (runs the page's real sign-in code with a fake
+Turnstile: A = ask, pass, then 12 renewals (one hour) -> exactly 2 requests (the refused one + one code); B = Resend
+after a sign-in asks again -> one more code only). Run it on the old file too: it must fail.
+
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-02 00:15 | 107 Turnstile renewal no longer sends a code every 5 minutes | site ad28611a | A+B pass; old code fails (12 renewals = 12 extra codes) |
 | 2026-11-01 17:20 | 105 program versions: newer notice, obsolete stop, admin tab Versions | site 2d1cb685; program (this commit) | 19/19; pod: obsolete exit 3, older told about 01de581; Rust 28/28 |
 | 2026-11-01 16:40 | 104 notifications (table user-broadcast, admin tab, pop-up on site and program) | site 3635b3bf | 19/19; routes 401 when signed out |
 | 2026-11-01 16:10 | 103 sign-in resets the counters; signed operator clear | site cdf96d02 | 8/8; live clear ok |
