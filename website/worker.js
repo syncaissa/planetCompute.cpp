@@ -190,7 +190,7 @@ export default {
 //   POST /api/me/emails/remove   {email}          remove an address (never the last one)
 
 const CODE_TTL_S = 10 * 60;            // a code is valid for 10 minutes
-const CODE_MAX_ATTEMPTS = 5;           // wrong guesses before the code is void
+const CODE_MAX_ATTEMPTS = 15;          // wrong guesses before the code is void (user 2026-11-02: was 5)
 const CODE_RESEND_S = 30;              // minimum gap between two codes to one address
 const CODE_MAX_PER_HOUR = 5;           // codes per address per hour
 const SESSION_TTL_S = 30 * 24 * 3600;  // sessions last 30 days
@@ -393,10 +393,46 @@ const codeHash = (env, purpose, email, code) => sha256hex(`${authSecret(env)}|co
 
 // Security review L3: wrong codes per address over a day; at OTP_FAIL_LOCK no new codes for that address until it passes
 const OTP_FAIL_LOCK = 15;   // per address per UTC day
+// User 2026-11-02 (noGuessingOTPcode.txt): also at most OTP_FAIL_30D wrong codes per address in 30 days. Counted in
+// 30-day buckets; the current and the previous bucket together must stay under the limit, so no 30-day stretch can
+// hold more than OTP_FAIL_30D (a year of guessing one address: at most ~600 of 1,000,000 codes). Both limits are
+// checked when a code is asked for AND when a code is tried (each try takes its place first, in one conditional
+// write, so guesses sent at the same moment cannot pass together; a right code gives its place back).
+const OTP_FAIL_30D = 50, OTP_FAIL_PERIOD = 30 * 86400;
+const failDayKey = (email, t) => ({ pk: `OTPFAIL#${email}#${Math.floor(t / 86400)}`, sk: "OTPFAIL" });
+const fail30Key = (email, b) => ({ pk: `OTPFAIL30#${email}#${b}`, sk: "OTPFAIL30" });
+const FAIL_DAY_MSG = "Too many wrong codes for this address today. Please try again tomorrow.";
+const FAIL_30D_MSG = "Too many wrong codes for this address in the last 30 days. Please try again later.";
+async function failCounts(env, email, t) {
+  const b = Math.floor(t / OTP_FAIL_PERIOD);
+  const [d, c, p] = await Promise.all([failDayKey(email, t), fail30Key(email, b), fail30Key(email, b - 1)].map((k) => getItem(env, k.pk, k.sk)));
+  return { day: Number((d && d.n) || 0), cur: Number((c && c.n) || 0), prev: Number((p && p.n) || 0), b };
+}
+// take one place in both counters for a try; returns an error text if a limit is reached (then nothing is taken)
+async function takeFailPlace(env, email, t) {
+  const f = await failCounts(env, email, t);
+  const add = (k, max, ttl) => ddb(env, "UpdateItem", { TableName: tableName(env), Key: M(k), UpdateExpression: "ADD n :one SET #ttl = :x",
+    ConditionExpression: "attribute_not_exists(n) OR n < :max", ExpressionAttributeNames: { "#ttl": "ttl" },
+    ExpressionAttributeValues: M({ ":one": 1, ":max": max, ":x": ttl }) });
+  const room30 = OTP_FAIL_30D - f.prev;
+  if (f.day >= OTP_FAIL_LOCK) return FAIL_DAY_MSG;
+  if (f.cur >= room30) return FAIL_30D_MSG;
+  try { await add(failDayKey(email, t), OTP_FAIL_LOCK, t + 2 * 86400); }
+  catch (e) { if (e.type === "ConditionalCheckFailedException") return FAIL_DAY_MSG; throw e; }
+  try { await add(fail30Key(email, f.b), room30, t + 2 * OTP_FAIL_PERIOD + 86400); }
+  catch (e) { await giveFailPlace(env, email, t, null); if (e.type === "ConditionalCheckFailedException") return FAIL_30D_MSG; throw e; }
+  return null;
+}
+async function giveFailPlace(env, email, t, b) {   // b null: only the day counter
+  const sub = (k) => ddb(env, "UpdateItem", { TableName: tableName(env), Key: M(k), UpdateExpression: "ADD n :m", ExpressionAttributeValues: M({ ":m": -1 }) })
+    .catch((e) => console.log("otp give place", e && e.message));
+  await sub(failDayKey(email, t));
+  if (b !== null) await sub(fail30Key(email, b));
+}
 // A daily ceiling per address (user 2026-11-01): more than OTP_DAY_MAX code requests for one address within 24 hours
 // (every purpose; refused ones count too) put the address on hold for OTP_HOLD_S: no code is made, and ONE email tells
 // the address when the hold started. Requests during the hold are refused without another email.
-const OTP_DAY_MAX = 10, OTP_HOLD_S = 24 * 3600;   // user 2026-11-01: hold for 24 hours after 10 requests
+const OTP_DAY_MAX = 30, OTP_HOLD_S = 24 * 3600;   // user 2026-11-02: hold for 24 hours after 30 requests (was 10)
 const gmtStamp = (t) => new Date(t * 1000).toISOString().replace(/\.\d+Z$/, "").replace(/-/g, "").replace("T", ":").replace(/:(\d\d):(\d\d)$/, "$1$2");
 async function otpDayCheck(env, email, t) {
   const pk = `OTPREQ#${email}`, rq = await getItem(env, pk, "OTPREQ");
@@ -426,9 +462,9 @@ async function issueCode(env, purpose, email, request) {
   const pk = `OTP#${purpose}#${email}`, t = now();
   const held = await otpDayCheck(env, email, t);
   if (held) return held;
-  const fails = await getItem(env, `OTPFAIL#${email}#${Math.floor(t / 86400)}`, "OTPFAIL");   // today's (UTC) wrong codes
-  if (fails && Number(fails.n || 0) >= OTP_FAIL_LOCK)
-    return { ok: false, status: 429, error: "Too many wrong codes for this address today. Please try again tomorrow." };
+  const fails = await failCounts(env, email, t);   // wrong codes today (UTC) and in the last 30 days
+  if (fails.day >= OTP_FAIL_LOCK) return { ok: false, status: 429, error: FAIL_DAY_MSG };
+  if (fails.cur + fails.prev >= OTP_FAIL_30D) return { ok: false, status: 429, error: FAIL_30D_MSG };
   const prev = await getItem(env, pk, "OTP");
   if (prev && t - prev.issued_at < CODE_RESEND_S) return { ok: false, status: 429, error: "Please wait a few seconds before asking for another code." };
   const inWindow = prev && t - prev.window_start < 3600;
@@ -454,27 +490,26 @@ async function issueCode(env, purpose, email, request) {
 async function checkCode(env, purpose, email, code) {
   const pk = `OTP#${purpose}#${email}`, t = now();
   // Security review W4: use up one attempt FIRST, in one conditional write, so guesses sent at the same moment cannot
-  // all pass the "fewer than 5 attempts" check; then compare; then use the code up only if it is still unused.
+  // all pass the "fewer than CODE_MAX_ATTEMPTS" check; then compare; then use the code up only if it is still unused.
+  // First a place in the address's day and 30-day counters of wrong codes (given back if the code is right).
+  const lockMsg = await takeFailPlace(env, email, t);
+  if (lockMsg) return lockMsg;
+  const giveBack = () => giveFailPlace(env, email, t, Math.floor(t / OTP_FAIL_PERIOD));
   try {
     await ddb(env, "UpdateItem", { TableName: tableName(env), Key: M({ pk, sk: "OTP" }), UpdateExpression: "ADD attempts :one",
       ConditionExpression: "attribute_exists(code_hash) AND expires_at > :t AND (attribute_not_exists(attempts) OR attempts < :max)",
       ExpressionAttributeValues: M({ ":one": 1, ":t": t, ":max": CODE_MAX_ATTEMPTS }) });
   } catch (e) {
+    await giveBack();                                    // no try was made: not counted
     if (e.type !== "ConditionalCheckFailedException") throw e;
     const otp = await getItem(env, pk, "OTP");
     return !otp || !otp.code_hash || t > otp.expires_at ? "That code has expired. Ask for a new one." : "Too many wrong codes. Ask for a new one.";
   }
   const otp = await getItem(env, pk, "OTP");
-  if (!otp || !otp.code_hash) return "That code has expired. Ask for a new one.";
+  if (!otp || !otp.code_hash) { await giveBack(); return "That code has expired. Ask for a new one."; }
   const h = /^\d{6}$/.test(String(code || "")) ? await codeHash(env, purpose, email, code) : "";
-  if (h !== otp.code_hash) {
-    try {
-      await ddb(env, "UpdateItem", { TableName: tableName(env), Key: M({ pk: `OTPFAIL#${email}#${Math.floor(t / 86400)}`, sk: "OTPFAIL" }),
-        UpdateExpression: "ADD n :one SET #ttl = :x", ExpressionAttributeNames: { "#ttl": "ttl" },
-        ExpressionAttributeValues: M({ ":one": 1, ":x": t + 2 * 86400 }) });
-    } catch (e) { console.log("otp fail count", e && e.message); }
-    return "That code is not right. Check the email and try again.";
-  }
+  if (h !== otp.code_hash) return "That code is not right. Check the email and try again.";   // its place stays taken
+  await giveBack();                                      // the right code: not a wrong one
   try {                                                  // single use: remove the hash (only if it is still this one)
     await ddb(env, "UpdateItem", { TableName: tableName(env), Key: M({ pk, sk: "OTP" }), UpdateExpression: "REMOVE code_hash SET expires_at = :t",
       ConditionExpression: "code_hash = :h", ExpressionAttributeValues: M({ ":t": t, ":h": h }) });
@@ -13892,7 +13927,7 @@ const AUTH_LIMITS = { start: [[600, 10], [86400, 40]], verify: [[600, 20], [8640
   save: [[60, 30], [86400, 300]], register: [[60, 30], [86400, 1500]], newacct: [[86400, 3]],
   addemail: [[3600, 5], [86400, 10]] };   // per IP (and per network); addemail also per account
 // Security review M4: the site-wide sign-in counters were low enough for a few hundred networks to block sign-in for
-// everyone; codes are already limited per address (CODE_MAX_PER_HOUR, CODE_MAX_ATTEMPTS, OTP_FAIL_LOCK), so the
+// everyone; codes are already limited per address (CODE_MAX_PER_HOUR, CODE_MAX_ATTEMPTS, OTP_FAIL_LOCK, OTP_FAIL_30D), so the
 // site-wide counter is now only a ceiling against a flood.
 const AUTH_GLOBAL = { start: [[600, 60000]], verify: [[600, 120000]], save: [[600, 6000]], register: [[600, 20000]], newacct: [[3600, 500]],
   addemail: [[600, 3000]] };

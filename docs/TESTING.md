@@ -2292,10 +2292,31 @@ Steps: `node scripts/test_otp_turnstile_loop.mjs website/worker.js` (runs the pa
 Turnstile: A = ask, pass, then 12 renewals (one hour) -> exactly 2 requests (the refused one + one code); B = Resend
 after a sign-in asks again -> one more code only). Run it on the old file too: it must fail.
 
+## 108. Guessing a sign-in code: 15 tries per code, 15 wrong a day, 50 wrong in 30 days, 30 requests a day (2026-11-02)
+
+User (noGuessingOTPcode.txt): "Just to make sure no one guesses the 6 digit code sent to the email address and logs in
+as other people." Built (site 72a322bb): CODE_MAX_ATTEMPTS 5 -> 15 per code; OTP_FAIL_LOCK 15 wrong codes per address
+per UTC day (unchanged), now also checked when a code is TRIED, not only when one is asked for (before, a code asked for
+at 14 wrong could still take its 5 tries); NEW OTP_FAIL_30D 50 wrong codes per address in 30 days (30-day buckets: the
+current plus the previous bucket must stay under 50, so no 30-day stretch holds more than 50); OTP_DAY_MAX 10 -> 30
+code requests in 24 hours before the 24-hour hold. Each try first takes a place in the day and 30-day counters in one
+conditional write (guesses at the same moment cannot pass together); a right code, an expired code or a refused try
+gives its place back. At most ~600 guesses a year per address = about 0.06% of the 1,000,000 codes.
+Steps (AWS test-table keys in the environment; test tables pctest-ai-*):
+(1) `node scripts/test_otp_limits.mjs website/worker.js` (14 checks: 15 wrong tries then refused, right code refused
+after, no new code today, counter stops at 15; 30 wrong at the same moment -> exactly 15 counted; 40 in the previous
+30-day bucket -> 10 more, then refused "30 days" and no new code; 3 wrong + right code signs in and counts 3).
+Run it on the old file too: it must fail. (2) Re-run 102 `test_otp_hold.mjs` (now 30), 56 `test_auth_codes.mjs`
+(now 15 per code; check 7 updated to the newacct limit of 3 a day that it had been failing on), 103
+`test_signin_reset.mjs` (31st request, 31 min apart), `test_signin_turnstile.mjs`.
+(3) Live: a wrong code for an unknown address answers "expired" and leaves both counters at 0 in planetcompute-ai-user
+(the 30-day counter exists only in the new code); the probe items were deleted.
+
 ## Our runs
 
 | Date (UTC) | Test | Build / site version | Result |
 |---|---|---|---|
+| 2026-11-02 01:55 | 108 code guessing limits 15/15 a day/50 in 30 days/30 requests | site 72a322bb | otp_limits 14/14 (old code 9 fail); otp_hold 10/10, auth_codes 7/7, signin_reset 8/8, signin_turnstile 10/10; live counters 0 |
 | 2026-11-02 00:15 | 107 Turnstile renewal no longer sends a code every 5 minutes | site ad28611a | A+B pass; old code fails (12 renewals = 12 extra codes) |
 | 2026-11-01 17:20 | 105 program versions: newer notice, obsolete stop, admin tab Versions | site 2d1cb685; program (this commit) | 19/19; pod: obsolete exit 3, older told about 01de581; Rust 28/28 |
 | 2026-11-01 16:40 | 104 notifications (table user-broadcast, admin tab, pop-up on site and program) | site 3635b3bf | 19/19; routes 401 when signed out |

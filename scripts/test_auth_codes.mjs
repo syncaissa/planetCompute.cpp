@@ -1,4 +1,4 @@
-// Sign-in codes (TESTING.md test 56; security review W4): guesses sent at the same moment cannot get past the 5-attempt
+// Sign-in codes (TESTING.md test 56; security review W4): guesses sent at the same moment cannot get past the 15-attempt (5 before 2026-11-02)
 // limit, a code works once, and sign-in requests are limited per IP / network. The given worker.js in-process against
 // the TEST tables (pctest-ai-*); e-mails are captured, not sent; the rate limiter runs in-process.
 //   AWS_ACCESS_KEY_ID=.. AWS_SECRET_ACCESS_KEY=.. node scripts/test_auth_codes.mjs website/worker.js
@@ -27,7 +27,7 @@ ok("1 a code is sent", r.s === 200 && /^\d{6}$/.test(code || ""), { r, code });
 const wrong = String((Number(code) + 1) % 1000000).padStart(6, "0");
 const rs = await Promise.all(Array.from({ length: 20 }, () => call("/api/auth/verify", { email, code: wrong })));
 const notRight = rs.filter((x) => /not right/.test(x.j.error || "")).length, tooMany = rs.filter((x) => /Too many wrong codes/.test(x.j.error || "")).length;
-ok(`2 20 wrong guesses at the same moment: exactly 5 were counted as guesses (${notRight}), the other 15 refused as too many (${tooMany})`, notRight === 5 && tooMany === 15, { notRight, tooMany });
+ok(`2 20 wrong guesses at the same moment: exactly 15 were counted as guesses (${notRight}), the other 5 refused as too many (${tooMany})`, notRight === 15 && tooMany === 5, { notRight, tooMany });
 r = await call("/api/auth/verify", { email, code });
 ok("3 after that even the right code is refused (the code is void)", r.s === 401 && /Too many wrong codes/.test(r.j.error), r);
 const email2 = "auth-test-" + randomBytes(4).toString("hex") + "@example.com";
@@ -39,7 +39,7 @@ ok("5 the same code again later: refused", r.s === 401, r);
 const fromOne = []; for (let i = 0; i < 22; i++) fromOne.push(await call("/api/auth/verify", { email: "nobody-" + i + "@example.com", code: "123456" }, "203.0.113.7"));
 ok("6 more than 20 sign-in guesses from one IP in 10 minutes: refused with 429 (the first 20 are answered)", fromOne.slice(0, 20).every((x) => x.s === 401) && fromOne.slice(20).every((x) => x.s === 429), fromOne.map((x) => x.s).join(","));
 const starts = []; for (let i = 0; i < 12; i++) starts.push(await call("/api/auth/start", { email: `many-${i}-${randomBytes(3).toString("hex")}@example.com` }, "203.0.113.9"));
-ok("7 asking for codes for many addresses from one IP: more than 10 in 10 minutes refused (429)", starts.slice(0, 10).every((x) => x.s === 200) && starts.slice(10).every((x) => x.s === 429), starts.map((x) => x.s).join(","));
+ok("7 asking for codes for many NEW addresses from one IP: more than 3 a day refused (429; AUTH_LIMITS newacct, was 10 per 10 minutes before)", starts.slice(0, 3).every((x) => x.s === 200) && starts.slice(3).every((x) => x.s === 429), starts.map((x) => x.s).join(","));
 // clean up the OTP items made here
 for (const m of globalThis.__mails || []) await G.ddb(env, "DeleteItem", { TableName: PREFIX + "user", Key: G.M({ pk: `OTP#signin#${m.to[0]}`, sk: "OTP" }) }).catch(() => {});
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

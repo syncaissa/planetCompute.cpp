@@ -1,4 +1,4 @@
-// docs/TESTING.md test 102: more than 10 code requests for one address in 24 hours put it on hold for 24 hours, with one
+// docs/TESTING.md test 102 (limit 30 since 2026-11-02, test 108): more than 30 code requests for one address in 24 hours put it on hold for 24 hours, with one
 // email (website/worker.js otpDayCheck). Based on test_signin_turnstile.mjs (same fakes).
 // In-process with a fake DynamoDB, a fake rate limiter (ContactGuard), a fake Turnstile siteverify and a fake email
 // service: nothing real is touched.   node scripts/test_signin_turnstile.mjs website/worker.js
@@ -46,17 +46,17 @@ const realNow = Date.now; let shift = 0; Date.now = () => realNow() + shift;
 const T0 = Date.now();
 const codesSent = () => mails.filter((m) => /is your PlanetCompute code/.test(m.subject)).length;
 const holdMails = () => mails.filter((m) => /on hold/.test(m.subject));
-const results = [];
-for (let i = 1; i <= 15; i++) { shift += 61000; results.push(await start("owner@example.com", PROGRAM)); }   // a minute apart
-ok("requests 1-10 are not held (codes sent while the hourly limit allows)", results.slice(0, 10).every((r) => !/on hold/.test(r.body.error || "")) && codesSent() >= 1, results.slice(0, 25).map((r) => r.status));
-ok("the 11th request puts the address on hold (429, 'on hold until ...')", results[10].status === 429 && /on hold until \d{8}:\d{6} Greenwich time/.test(results[10].body.error || ""), results[10]);
-ok("requests 12-15 are refused as on hold", results.slice(11).every((r) => r.status === 429 && /on hold/.test(r.body.error || "")), results.slice(26).map((r) => r.body.error));
+const N = 30, results = [];   // OTP_DAY_MAX
+for (let i = 1; i <= N + 5; i++) { shift += 61000; results.push(await start("owner@example.com", PROGRAM)); }   // a minute apart
+ok(`requests 1-${N} are not held (codes sent while the hourly limit allows)`, results.slice(0, N).every((r) => !/on hold/.test(r.body.error || "")) && codesSent() >= 1, results.slice(0, 25).map((r) => r.status));
+ok(`request ${N + 1} puts the address on hold (429, 'on hold until ...')`, results[N].status === 429 && /on hold until \d{8}:\d{6} Greenwich time/.test(results[N].body.error || ""), results[N]);
+ok(`requests ${N + 2}-${N + 5} are refused as on hold`, results.slice(N + 1).every((r) => r.status === 429 && /on hold/.test(r.body.error || "")), results.slice(26).map((r) => r.body.error));
 ok("exactly ONE hold email was sent", holdMails().length === 1, holdMails().length);
-const hm = holdMails()[0] || {}, started = new Date(T0 + 11 * 61000).toISOString();
+const hm = holdMails()[0] || {}, started = new Date(T0 + (N + 1) * 61000).toISOString();
 const stamp = started.slice(0, 10).replace(/-/g, "") + ":" + started.slice(11, 19).replace(/:/g, "");
 ok("the hold email says: Your account is on hold for 24 hours starting YYYYMMDD:HHMMSS Greenwich time; please try later",
   (hm.text || "").startsWith("Your account is on hold for 24 hours starting ") && / Greenwich time; please try later\./.test(hm.text || "") && (hm.text || "").includes(stamp.slice(0, 13)), [hm.text && hm.text.slice(0, 120), stamp]);
-ok("no code was sent during the hold", codesSent() === results.slice(0, 10).filter((r) => r.status === 200).length, [codesSent(), results.filter((r) => r.status === 200).length]);
+ok("no code was sent during the hold", codesSent() === results.slice(0, N).filter((r) => r.status === 200).length, [codesSent(), results.filter((r) => r.status === 200).length]);
 shift += 23 * 3600 * 1000;
 let r = await start("owner@example.com", PROGRAM);
 ok("23 hours later: still on hold", r.status === 429 && /on hold/.test(r.body.error || ""), r);

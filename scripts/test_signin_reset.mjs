@@ -2,7 +2,7 @@
 // In-process: the site's real rate limiter (ContactGuard) on fake storage, a fake DynamoDB and a fake email service.
 //   node scripts/test_signin_reset.mjs website/worker.js
 // Checks: one network asking for more than 10 codes in 10 minutes is refused ("too many sign-in attempts from your
-// network"); after a successful sign-in from that network it can ask again; the per-address daily counter (10, then a
+// network"); after a successful sign-in from that network it can ask again; the per-address daily counter (30 since 2026-11-02, then a
 // 24-hour hold) starts again after a successful sign-in, so 30 sign-ins in a row never hold the address; the signed
 // operator clear refuses a wrong signature and clears every network's counters with the right one.
 import { createHmac } from "node:crypto";
@@ -72,11 +72,11 @@ for (let i = 0; i < 30; i++) { shift += 13 * 60 * 1000; results.push(await signI
 ok("30 sign-ins in a row all succeed (no network lock, no daily hold)", results.every((x) => x.stage === "verify" && x.status === 200), results.filter((x) => x.status !== 200).slice(0, 2));
 ok("no 'on hold' email was sent", !mails.some((m) => /on hold/.test(m.subject)), mails.filter((m) => /on hold/.test(m.subject)).length);
 
-// 3. without signing in, the daily hold still works (11th request)
+// 3. without signing in, the daily hold still works (31st request; 11th before 2026-11-02)
 store.clear(); db.forEach((v, k) => { if (k.startsWith("OTP")) db.delete(k); });
 let held = null;
-for (let i = 0; i < 11; i++) { shift += 61 * 60 * 1000; const x = await call("/api/auth/start", { email: "owner@example.com" }, "198.51.100." + (20 + i)); if (/on hold/.test(x.body.error || "")) { held = { i: i + 1, ...x }; break; } }
-ok("without a sign-in, the 11th request still starts the 24-hour hold", held && held.i === 11, held);
+for (let i = 0; i < 31; i++) { shift += 31 * 60 * 1000; const x = await call("/api/auth/start", { email: "owner@example.com" }, "198.51.100." + (20 + i)); if (/on hold/.test(x.body.error || "")) { held = { i: i + 1, ...x }; break; } }
+ok("without a sign-in, the 31st request still starts the 24-hour hold", held && held.i === 31, held);
 
 // 4. the signed operator clear
 store.set("k:start:ip:203.0.113.9", [Date.now() / 1000]); store.set("k:start:all", [Date.now() / 1000]);
